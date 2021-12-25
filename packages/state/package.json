@@ -1,5 +1,9 @@
 {
   "name": "@jitl/state",
   "version": "0.0.1",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "jotai": "^1.4.9",
+    "proxy-compare": "^2.0.2"
+  }
 }
