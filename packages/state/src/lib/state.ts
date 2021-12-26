@@ -1,14 +1,24 @@
 import { Atom, atom } from 'jotai';
-import { createProxy, isChanged } from 'proxy-compare';
+import { createProxy, isChanged, getUntracked } from 'proxy-compare';
 
 function shallowEqual<T>(old: T, update: T): boolean {
   // TODO
   return old === update;
 }
 
+/**
+ * Deep unwrap any proxies in `value`. If none are present, returns the original
+ * value.  Does not recurse into class instances.
+ */
 function deepUnwrap<T>(value: T, visited = new Set<unknown>()): T {
   if (!canProxyOrClone(value)) {
     return value;
+  }
+
+  const unwrapped = getUntracked(value);
+  if (unwrapped && unwrapped !== value) {
+    // We unwrapped a proxy, no need to recurse.
+    return unwrapped;
   }
 
   if (visited.has(value)) {
