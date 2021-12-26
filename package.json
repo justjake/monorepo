@@ -5,6 +5,7 @@
   "scripts": {},
   "private": true,
   "dependencies": {
+    "react": "^17.0.2",
     "tslib": "^2.0.0"
   },
   "devDependencies": {

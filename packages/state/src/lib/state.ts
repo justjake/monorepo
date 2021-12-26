@@ -60,11 +60,11 @@ export function createShallowEqualAtom<T>(initialState: T) {
 }
 
 interface ProxyState<T> {
-  previousDeps: Set<Atom<unknown>>;
+  deps: Set<Atom<unknown>>;
   previousValues: WeakMap<Atom<unknown>, unknown>;
-  previousAffected: WeakMap<object, Set<unknown>>;
+  affected: WeakMap<object, Set<unknown>>;
   proxyCache: WeakMap<object, unknown>;
-  value?: T;
+  value: T;
 }
 
 interface StateHolder<T> {
@@ -85,22 +85,27 @@ function canProxyOrClone(value: unknown): value is object | Array<unknown> {
 }
 
 export function createProxyReadAtom<T>(read: Atom<T>['read']): Atom<T> {
-  // TODO: this initial state object is shared with all instances (across all scopes/stores/worlds)
-  // How to make it unique?????????
-  const stateAtom = atom<StateHolder<T>>({ state: undefined });
+  const stateAtom: Atom<ProxyState<T>> = atom((rawGet) => {
+    // We can fetch our previous value once we've run a single time.
+    // but on first run, this will throw 'no atom init'.
+    let previousState: ProxyState<T> | undefined;
+    try {
+      previousState = rawGet(stateAtom);
+    } catch (error) {
+      if (error && error instanceof Error && error.message === 'no atom init') {
+        previousState = undefined;
+      } else {
+        throw error;
+      }
+    }
 
-  return atom((rawGet) => {
-    const stateHolder = rawGet(stateAtom);
-    const state: ProxyState<T> = stateHolder.state || {
-      previousDeps: new Set<Atom<unknown>>(),
-      previousValues: new WeakMap(),
-      previousAffected: new WeakMap(),
-      proxyCache: new WeakMap(),
-    };
+    if (previousState) {
+      const {
+        deps: previousDeps,
+        previousValues,
+        affected: previousAffected,
+      } = previousState;
 
-    const { previousDeps, previousValues, previousAffected, proxyCache } =
-      state;
-    if ('value' in state) {
       // Check that dependencies have actually changed, otherwise skip computation.
       let changed = false;
       for (const depAtom of previousDeps) {
@@ -115,41 +120,40 @@ export function createProxyReadAtom<T>(read: Atom<T>['read']): Atom<T> {
       }
 
       if (!changed) {
-        return state.value as T;
+        return previousState;
       }
     }
 
-    const newAffected: typeof previousAffected = new WeakMap();
-    const newDeps: typeof previousDeps = new Set();
-    const newValues: typeof previousValues = new WeakMap();
+    const newState: ProxyState<T> = {
+      deps: new Set(),
+      affected: new WeakMap(),
+      previousValues: new WeakMap(),
+      proxyCache: previousState?.proxyCache || new WeakMap(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      value: undefined as any,
+    };
+
     function proxyGet<T>(atom: Atom<T>): T {
       const newValue = rawGet(atom);
       if (!canProxyOrClone(newValue)) {
         return newValue;
       }
 
-      newDeps.add(atom);
-      newValues.set(atom, newValue);
-      return createProxy(newValue, newAffected, proxyCache);
+      newState.deps.add(atom);
+      newState.previousValues.set(atom, newValue);
+      return createProxy(newValue, newState.affected, newState.proxyCache);
     }
 
     const value = deepUnwrap(read(proxyGet));
-    if (shallowEqual(value, state.value)) {
-      return state.value as T;
+    if (previousState && shallowEqual(value, previousState.value)) {
+      return previousState;
     }
 
-    // We produced a new value, so update the state.
-    // TODO: how do we persist the private proxy state?
-    stateHolder.state = {
-      previousDeps: newDeps,
-      previousAffected: newAffected,
-      previousValues: newValues,
-      proxyCache: proxyCache,
-      value,
-    };
-
-    return value;
+    newState.value = value;
+    return newState;
   });
+
+  return atom<T>((get) => get(stateAtom).value);
 }
 
 function example() {

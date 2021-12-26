@@ -2,12 +2,17 @@
 # yarn lockfile v1
 
 
-jotai@^1.4.9:
-  version "1.4.9"
-  resolved "https://registry.yarnpkg.com/jotai/-/jotai-1.4.9.tgz#e16dec961260995879d412c7809710b38d49b3e1"
-  integrity sha512-NHh3UIIelfUBUjcJi+oXHoL9rISkj8LZu3eeXR5KL1VBYLOuPVK0TTTDfbgdwm5B83zpxNAhTlhb/aKlJBtP0g==
+"@types/node@^17.0.4":
+  "integrity" "sha512-6xwbrW4JJiJLgF+zNypN5wr2ykM9/jHcL7rQ8fZe2vuftggjzZeRSM4OwRc6Xk8qWjwJ99qVHo/JgOGmomWRog=="
+  "resolved" "https://registry.npmjs.org/@types/node/-/node-17.0.4.tgz"
+  "version" "17.0.4"
 
-proxy-compare@^2.0.2:
-  version "2.0.2"
-  resolved "https://registry.yarnpkg.com/proxy-compare/-/proxy-compare-2.0.2.tgz#343e624d0ec399dfbe575f1d365d4fa042c9fc69"
-  integrity sha512-3qUXJBariEj3eO90M3Rgqq3+/P5Efl0t/dl9g/1uVzIQmO3M+ql4hvNH3mYdu8H+1zcKv07YvL55tsY74jmH1A==
+"jotai@^1.4.9":
+  "integrity" "sha512-NHh3UIIelfUBUjcJi+oXHoL9rISkj8LZu3eeXR5KL1VBYLOuPVK0TTTDfbgdwm5B83zpxNAhTlhb/aKlJBtP0g=="
+  "resolved" "https://registry.npmjs.org/jotai/-/jotai-1.4.9.tgz"
+  "version" "1.4.9"
+
+"proxy-compare@^2.0.2":
+  "integrity" "sha512-3qUXJBariEj3eO90M3Rgqq3+/P5Efl0t/dl9g/1uVzIQmO3M+ql4hvNH3mYdu8H+1zcKv07YvL55tsY74jmH1A=="
+  "resolved" "https://registry.npmjs.org/proxy-compare/-/proxy-compare-2.0.2.tgz"
+  "version" "2.0.2"

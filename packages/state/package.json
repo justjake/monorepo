@@ -5,5 +5,8 @@
   "dependencies": {
     "jotai": "^1.4.9",
     "proxy-compare": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.4"
   }
 }
