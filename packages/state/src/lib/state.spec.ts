@@ -1,6 +1,5 @@
 import * as assert from 'assert';
-import { Atom, atom } from 'jotai';
-import { createStore, READ_ATOM } from 'jotai/core/store';
+import { Atom, atom, createStore, READ_ATOM } from 'jotai';
 
 describe('state', () => {
   it('should work', () => {

@@ -1,10 +1,18 @@
 /**
  * Access Jotai atoms from outside React using global implicit capabilities.
- * This allows you to migrate to Jotai without major restructuring.
+ * This allows you to migrate to Jotai without major restructuring of code that
+ * uses global Flux stores.
  */
 
-import { Atom, atom, WritableAtom } from 'jotai';
-import { READ_ATOM, Store, SUBSCRIBE_ATOM, WRITE_ATOM } from 'jotai/core/store';
+import {
+  Atom,
+  atom,
+  WritableAtom,
+  READ_ATOM,
+  Store,
+  SUBSCRIBE_ATOM,
+  WRITE_ATOM,
+} from 'jotai';
 import { proxyCompareAtom } from './proxyCompareAtom';
 
 export interface WriteCapability {
