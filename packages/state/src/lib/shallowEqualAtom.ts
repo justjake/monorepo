@@ -1,4 +1,4 @@
-import { atom } from '@jitl/jotai';
+import { atomWithReducer } from '@jitl/jotai/utils';
 
 export function shallowEqual<T>(old: T, update: T): boolean {
   // TODO
@@ -10,16 +10,10 @@ export function shallowEqual<T>(old: T, update: T): boolean {
  * current value.
  */
 export function shallowEqualAtom<T>(initialState: T) {
-  const base = atom(initialState);
-  const shallowEquality = atom<T, T>(
-    (get) => get(base),
-    (get, set, update) => {
-      const current = get(base);
-      if (shallowEqual(current, update)) {
-        return;
-      }
-      set(base, update);
+  return atomWithReducer(initialState, (current: T, update: T) => {
+    if (shallowEqual(current, update)) {
+      return current;
     }
-  );
-  return shallowEquality;
+    return update;
+  });
 }
