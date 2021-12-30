@@ -193,13 +193,22 @@ export function createAction<Args extends any[]>(
   capability: WriteCapability & Capabilities,
   perform: (...args: Args) => void
 ) {
-  return (...args: Args) =>
-    ({
-      [name]: (...args: Args) => {
-        callWithCapability(capability, () => perform(...args));
-      },
-      // An attempt to name a stack frame.
-    }[name](...args));
+  const writableAtom = atom<void, Args, void>(void 0, (get, set, update) => {
+    callWithCapability({ ...capability, get, set }, () => perform(...update));
+  });
+
+  const action = (...args: Args) => {
+    capability.set(writableAtom, args);
+  };
+
+  Object.defineProperty(action, 'name', {
+    value: `action(${name}) of ${perform.name})`,
+    configurable: true,
+    enumerable: false,
+    writable: false,
+  });
+
+  return action;
 }
 
 function example() {
