@@ -1,4 +1,4 @@
-import { atom } from 'jotai';
+import { atom } from '@jitl/jotai';
 
 export function shallowEqual<T>(old: T, update: T): boolean {
   // TODO

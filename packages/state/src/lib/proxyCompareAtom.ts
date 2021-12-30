@@ -1,6 +1,16 @@
-import { Atom, atom } from 'jotai';
-import { getUntracked, isChanged, createProxy } from 'proxy-compare';
+import { Atom, atom } from '@jitl/jotai';
+import {
+  getUntracked,
+  isChanged,
+  createProxy,
+  affectedToPathList,
+} from 'proxy-compare';
 import { shallowEqual } from './shallowEqualAtom';
+
+const DEBUG = false;
+function debug(...args: unknown[]) {
+  if (DEBUG) console.log(...args);
+}
 
 /**
  * We can proxy plain objects or plain arrays. Non-objects or special object
@@ -77,6 +87,8 @@ export function proxyCompareAtom<T>(read: Atom<T>['read']): Atom<T> {
         affected: previousAffected,
       } = previousState;
 
+      debug('have previous state', previousState);
+
       // Check that dependencies have actually changed, otherwise skip computation.
       let changed = false;
       for (const depAtom of previousDeps) {
@@ -90,8 +102,19 @@ export function proxyCompareAtom<T>(read: Atom<T>['read']): Atom<T> {
         const previousValue = previousValues.get(depAtom);
         if (
           newValue !== previousValue &&
-          isChanged(newValue, previousValue, previousAffected, new WeakMap())
+          isChanged(previousValue, newValue, previousAffected, new WeakMap())
         ) {
+          debug(
+            'dependency changed',
+            atom,
+            'from',
+            previousValue,
+            '->',
+            newValue,
+            'at',
+            affectedToPathList(newValue, previousAffected),
+            previousAffected.get(previousValue as any)
+          );
           changed = true;
         }
       }
@@ -99,6 +122,8 @@ export function proxyCompareAtom<T>(read: Atom<T>['read']): Atom<T> {
       if (!changed) {
         return previousState;
       }
+    } else {
+      debug('no previous state');
     }
 
     // Perform computation and track a new set of proxy dependencies.

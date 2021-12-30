@@ -12,7 +12,7 @@ import {
   Store,
   SUBSCRIBE_ATOM,
   WRITE_ATOM,
-} from 'jotai';
+} from '@jitl/jotai';
 import { proxyCompareAtom } from './proxyCompareAtom';
 
 export interface WriteCapability {
@@ -58,7 +58,8 @@ let TOP_LEVEL_CAPABILITIES: Array<Capabilities & ResumableCapability> = [];
 
 function getLastCapability(): Capabilities | undefined {
   return (
-    STACK_CAPABILITIES || TOP_LEVEL_CAPABILITIES[TOP_LEVEL_CAPABILITIES.length]
+    STACK_CAPABILITIES ||
+    TOP_LEVEL_CAPABILITIES[TOP_LEVEL_CAPABILITIES.length - 1]
   );
 }
 
@@ -122,7 +123,7 @@ export const currentCapabilities = new CurrentCapabilities();
  * @returns the result of `fn`
  */
 export function callWithCapability<T>(
-  capability: Capabilities,
+  capability: Capabilities | undefined,
   fn: () => T
 ): T {
   const prev = STACK_CAPABILITIES;

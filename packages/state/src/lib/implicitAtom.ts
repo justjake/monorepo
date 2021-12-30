@@ -19,7 +19,7 @@
  * 5. Stop providing global capability to access your jotai Store.
  */
 
-import { Atom, WritableAtom, atom, Getter } from 'jotai';
+import { Atom, WritableAtom, atom, Getter } from '@jitl/jotai';
 import {
   currentCapabilities,
   callWithCapability,
@@ -63,7 +63,7 @@ export class ComputedAtom<T> extends ImplicitAtom<T> implements Atom<T> {
 }
 
 // TODO: support writable derived atoms?
-export function computedAtom<T>(read: () => T): ComputedAtom<T> {
+export function computedAtom<T>(read: (getter: Getter) => T): ComputedAtom<T> {
   return new ComputedAtom(read);
 }
 
