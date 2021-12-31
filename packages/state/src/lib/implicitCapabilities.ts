@@ -238,6 +238,7 @@ function example() {
   );
 
   // Examples of actions that use the current capabilities to update atoms.
+  // TODO: use action constructor
   function addItem(name: string) {
     const items = [...currentCapabilities.must.get(itemsAtom)];
     items.push({ id: items.length + 1, name, done: false });
