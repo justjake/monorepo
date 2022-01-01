@@ -1,5 +1,5 @@
-import { CSSProperties } from 'react'
-import { atomWithReducer } from './atomWithReducer'
+import { WritableAtom } from 'jotai';
+import { atomWithReducer } from 'jotai/utils';
 
 /**
  * Create an atom with a custom comparison function that only triggers updates
@@ -16,10 +16,10 @@ import { atomWithReducer } from './atomWithReducer'
 export function atomWithCompare<Value>(
   initialValue: Value,
   areEqual: (prev: Value, next: Value) => boolean
-) {
+): WritableAtom<Value, Value, void> {
   return atomWithReducer(initialValue, (prev: Value, next: Value) => {
     if (areEqual(prev, next)) {
-      return prev
+      return prev;
     }
 
     // Jotai limitation:
@@ -27,7 +27,7 @@ export function atomWithCompare<Value>(
     // so downstream computations will not re-run.
     if (
       typeof process === 'object' &&
-      process.env.NODE_ENV !== 'production' &&
+      process.env['NODE_ENV'] !== 'production' &&
       Object.is(prev, next)
     ) {
       console.warn(
@@ -37,9 +37,9 @@ export function atomWithCompare<Value>(
         next,
         ') returned false, but the values are the same. State will not be updated.',
         areEqual
-      )
+      );
     }
 
-    return next
-  })
+    return next;
+  });
 }

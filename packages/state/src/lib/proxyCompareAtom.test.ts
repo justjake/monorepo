@@ -1,4 +1,4 @@
-import { atom } from '@jitl/jotai';
+import { atom } from 'jotai';
 import { proxyCompareAtom } from './proxyCompareAtom';
 import { useTestWorld } from './implicitCapabilities.spec';
 

@@ -1,4 +1,4 @@
-import { atomWithReducer } from '@jitl/jotai/utils';
+import { atomWithReducer } from 'jotai/utils';
 
 export function shallowEqual<T>(old: T, update: T): boolean {
   // TODO

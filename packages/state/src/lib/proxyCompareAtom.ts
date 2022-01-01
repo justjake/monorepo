@@ -1,4 +1,4 @@
-import { Atom, atom } from '@jitl/jotai';
+import { Atom, atom } from 'jotai';
 import {
   getUntracked,
   isChanged,

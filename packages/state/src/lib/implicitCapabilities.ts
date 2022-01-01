@@ -12,7 +12,7 @@ import {
   Store,
   SUBSCRIBE_ATOM,
   WRITE_ATOM,
-} from '@jitl/jotai';
+} from 'jotai';
 import { proxyCompareAtom } from './proxyCompareAtom';
 
 export interface WriteCapability {

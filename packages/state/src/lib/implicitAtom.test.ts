@@ -1,4 +1,4 @@
-import { createStore } from '@jitl/jotai';
+import { createStore } from 'jotai';
 import {
   callWithCapability,
   currentCapabilities,

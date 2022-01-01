@@ -2,15 +2,15 @@
 # yarn lockfile v1
 
 
-"@jitl/jotai@^1.4.9":
-  version "1.4.9"
-  resolved "https://registry.yarnpkg.com/@jitl/jotai/-/jotai-1.4.9.tgz#fc8f0b109ffece5a3eb5e6d336a1e7f29c6f5321"
-  integrity sha512-052Fsmo/HhBKzKNrbPotlZriEhFCJw1WdcPocYboC8VDiVqd/ZEBDuKy+EQcUsrhrApCD9wGKMxD0vvxFfhfWQ==
-
 "@types/node@^17.0.4":
   version "17.0.4"
   resolved "https://registry.npmjs.org/@types/node/-/node-17.0.4.tgz"
   integrity sha512-6xwbrW4JJiJLgF+zNypN5wr2ykM9/jHcL7rQ8fZe2vuftggjzZeRSM4OwRc6Xk8qWjwJ99qVHo/JgOGmomWRog==
+
+"jotai@npm:@jitl/jotai@^1.4.9":
+  version "1.4.9"
+  resolved "https://registry.yarnpkg.com/@jitl/jotai/-/jotai-1.4.9.tgz#fc8f0b109ffece5a3eb5e6d336a1e7f29c6f5321"
+  integrity sha512-052Fsmo/HhBKzKNrbPotlZriEhFCJw1WdcPocYboC8VDiVqd/ZEBDuKy+EQcUsrhrApCD9wGKMxD0vvxFfhfWQ==
 
 proxy-compare@^2.0.2:
   version "2.0.2"

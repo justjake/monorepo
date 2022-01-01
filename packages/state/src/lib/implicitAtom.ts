@@ -19,7 +19,7 @@
  * 5. Stop providing global capability to access your jotai Store.
  */
 
-import { Atom, WritableAtom, atom, Getter } from '@jitl/jotai';
+import { Atom, WritableAtom, atom, Getter } from 'jotai';
 import {
   currentCapabilities,
   callWithCapability,

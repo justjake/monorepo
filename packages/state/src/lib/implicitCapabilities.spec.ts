@@ -1,4 +1,4 @@
-import { atom, createStore } from '@jitl/jotai';
+import { atom, createStore } from 'jotai';
 import {
   callWithCapability,
   currentCapabilities,
