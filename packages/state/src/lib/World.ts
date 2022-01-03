@@ -1,13 +1,13 @@
 import { createStore, Store } from 'jotai';
-import { jotaiStoreCapabilities, TopLevelCapabilities } from '..';
+import { jotaiStoreCapabilities } from './implicitCapabilities';
 import { ChangeSubscriber, ScheduleFn, Scheduler } from './Scheduler';
 import * as ReactDOM from 'react-dom';
 
 export class World {
-  store: Store;
-  capabilities: ReturnType<typeof jotaiStoreCapabilities>;
-  scheduler: Scheduler;
-  changeSubscriber: ChangeSubscriber;
+  readonly store: Store;
+  readonly capabilities: ReturnType<typeof jotaiStoreCapabilities>;
+  readonly scheduler: Scheduler;
+  readonly changeSubscriber: ChangeSubscriber;
 
   constructor(
     private config: {

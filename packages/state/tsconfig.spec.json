@@ -6,6 +6,6 @@
     // "esModuleInterop": true,
     "types": ["jest", "node"]
   },
-  "include": ["**/*.test.ts", "**/*.spec.ts", "**/*.d.ts", "node_modules"],
+  "include": ["**/*.test.ts", "**/*.spec.ts", "**/*.d.ts", "**/*.test.tsx"],
   "exclude": []
 }
