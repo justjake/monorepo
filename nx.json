@@ -5,7 +5,7 @@
     "defaultBase": "main"
   },
   "cli": {
-    "defaultCollection": "@nrwl/workspace"
+    "defaultCollection": "@nrwl/react"
   },
   "tasksRunnerOptions": {
     "default": {
@@ -13,6 +13,13 @@
       "options": {
         "cacheableOperations": ["build", "lint", "test", "e2e"],
         "accessToken": "MjAxNWUzYmUtMjg4ZS00YmM2LWI0YjItNTM3ZjkwOTNjODBlfHJlYWQtd3JpdGU="
+      }
+    }
+  },
+  "generators": {
+    "@nrwl/react": {
+      "application": {
+        "babel": true
       }
     }
   }
