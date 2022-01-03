@@ -2,32 +2,52 @@
   "root": "packages/state",
   "sourceRoot": "packages/state/src",
   "projectType": "library",
+  "tags": [],
   "targets": {
     "build": {
-      "executor": "@nrwl/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "executor": "@nrwl/web:rollup",
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/packages/state",
-        "main": "packages/state/src/index.ts",
         "tsConfig": "packages/state/tsconfig.lib.json",
-        "assets": ["packages/state/*.md"]
+        "project": "packages/state/package.json",
+        "entryFile": "packages/state/src/index.ts",
+        "external": [
+          "react/jsx-runtime"
+        ],
+        "rollupConfig": "@nrwl/react/plugins/bundle-rollup",
+        "compiler": "babel",
+        "assets": [
+          {
+            "glob": "packages/state/README.md",
+            "input": ".",
+            "output": "."
+          }
+        ]
       }
     },
     "lint": {
       "executor": "@nrwl/linter:eslint",
-      "outputs": ["{options.outputFile}"],
+      "outputs": [
+        "{options.outputFile}"
+      ],
       "options": {
-        "lintFilePatterns": ["packages/state/**/*.ts"]
+        "lintFilePatterns": [
+          "packages/state/**/*.{ts,tsx,js,jsx}"
+        ]
       }
     },
     "test": {
       "executor": "@nrwl/jest:jest",
-      "outputs": ["coverage/packages/state"],
+      "outputs": [
+        "coverage/packages/state"
+      ],
       "options": {
         "jestConfig": "packages/state/jest.config.js",
         "passWithNoTests": true
       }
     }
-  },
-  "tags": []
+  }
 }
