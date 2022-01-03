@@ -1,3 +1,7 @@
+TODOs:
+
+- Move back to TSC based build process, but with JSX support. This whole "rollup/react" preset was a mistake
+
 # state
 
 This library was generated with [Nx](https://nx.dev).
