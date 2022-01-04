@@ -48,6 +48,10 @@ export function memoizeWithLRU<Args extends unknown[], R>(
   limit: number,
   fn: (...args: Args) => R
 ): (...args: Args) => R {
+  if (limit < 1) {
+    return fn;
+  }
+
   const root: MemoNode<{ result: R; args: Args }> = {};
   const lru: Args[] = [];
 
@@ -71,7 +75,7 @@ export function memoizeWithLRU<Args extends unknown[], R>(
     };
     lru.push(args);
 
-    if (lru.length >= limit) {
+    if (lru.length > limit) {
       const del = lru.shift();
       if (del) {
         let delNode = root;
@@ -84,8 +88,8 @@ export function memoizeWithLRU<Args extends unknown[], R>(
 
         delete delNode.memo;
 
-        for (let i = args.length - 1; i >= 0; i--) {
-          const arg = args[i];
+        for (let i = del.length - 1; i >= 0; i--) {
+          const arg = del[i];
           const argParent = mustBeDefined(parents[i]);
           if (memoIsEmpty(delNode)) {
             assertDefined(argParent.children);
