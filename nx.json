@@ -1,6 +1,6 @@
 {
   "extends": "@nrwl/workspace/presets/core.json",
-  "npmScope": "@jitl",
+  "npmScope": "jitl",
   "affected": {
     "defaultBase": "main"
   },

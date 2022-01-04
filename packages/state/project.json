@@ -2,34 +2,7 @@
   "root": "packages/state",
   "sourceRoot": "packages/state/src",
   "projectType": "library",
-  "tags": [],
   "targets": {
-    "build": {
-      "executor": "@nrwl/web:rollup",
-      "outputs": ["{options.outputPath}"],
-      "options": {
-        "outputPath": "dist/packages/state",
-        "tsConfig": "packages/state/tsconfig.lib.json",
-        "project": "packages/state/package.json",
-        "entryFile": "packages/state/src/index.ts",
-        "external": [
-          "react/jsx-runtime",
-          "jotai",
-          "proxy-compare",
-          "react",
-          "react-dom"
-        ],
-        "rollupConfig": "@nrwl/react/plugins/bundle-rollup",
-        "compiler": "babel",
-        "assets": [
-          {
-            "glob": "packages/state/README.md",
-            "input": ".",
-            "output": "."
-          }
-        ]
-      }
-    },
     "lint": {
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],
@@ -44,6 +17,18 @@
         "jestConfig": "packages/state/jest.config.js",
         "passWithNoTests": true
       }
+    },
+    "build": {
+      "executor": "@nrwl/node:package",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/state",
+        "tsConfig": "packages/state/tsconfig.lib.json",
+        "packageJson": "packages/state/package.json",
+        "main": "packages/state/src/index.ts",
+        "assets": ["packages/state/*.md"]
+      }
     }
-  }
+  },
+  "tags": []
 }
