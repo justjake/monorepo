@@ -2,33 +2,12 @@
   "root": "packages/pinch-zoom",
   "sourceRoot": "packages/pinch-zoom/src",
   "projectType": "library",
-  "tags": [],
   "targets": {
-    "build": {
-      "executor": "@nrwl/web:rollup",
-      "outputs": ["{options.outputPath}"],
-      "options": {
-        "outputPath": "dist/packages/pinch-zoom",
-        "tsConfig": "packages/pinch-zoom/tsconfig.lib.json",
-        "project": "packages/pinch-zoom/package.json",
-        "entryFile": "packages/pinch-zoom/src/index.ts",
-        "external": ["react/jsx-runtime"],
-        "rollupConfig": "@nrwl/react/plugins/bundle-rollup",
-        "compiler": "babel",
-        "assets": [
-          {
-            "glob": "packages/pinch-zoom/README.md",
-            "input": ".",
-            "output": "."
-          }
-        ]
-      }
-    },
     "lint": {
       "executor": "@nrwl/linter:eslint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": ["packages/pinch-zoom/**/*.{ts,tsx,js,jsx}"]
+        "lintFilePatterns": ["packages/pinch-zoom/**/*.ts"]
       }
     },
     "test": {
@@ -39,5 +18,6 @@
         "passWithNoTests": true
       }
     }
-  }
+  },
+  "tags": []
 }
