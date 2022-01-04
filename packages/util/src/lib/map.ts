@@ -11,7 +11,7 @@ export interface MapLike<K, V> {
  * @param create produce a value if missing
  * @returns existing or newly-created value
  */
-export function mapGetWithDefault<K, V>(
+export function mapGetOrCreate<K, V>(
   map: MapLike<K, V>,
   key: K,
   create: () => V
@@ -23,4 +23,12 @@ export function mapGetWithDefault<K, V>(
   const value = create();
   map.set(key, value);
   return { value, created: true };
+}
+
+export function mapMustGet<K, V>(map: MapLike<K, V>, key: K): V {
+  if (!map.has(key)) {
+    throw new Error(`Missing key ${key}`);
+  }
+
+  return map.get(key) as V;
 }

@@ -15,7 +15,10 @@ export const WorldProvider = WorldContext.Provider;
 
 type RunAction = <R>(perform: (get: Getter, set: Setter) => R) => R;
 
-type EnhancedProps = {
+/**
+ * Props provided to class-based Jotai components by `classComponentWithJotai`.
+ */
+export type WithJotaiProps = {
   /** Get state of atom, and possibly subscribe to it */
   get: Getter;
   /** Perform an action */
@@ -36,11 +39,11 @@ type EnhancedProps = {
  */
 export function classComponentWithJotai<
   Props,
-  ComponentT extends React.Component<Props & EnhancedProps>
+  ComponentT extends React.Component<Props & WithJotaiProps>
 >(
-  Component: React.ComponentClass<Props & EnhancedProps>,
+  Component: React.ComponentClass<Props & WithJotaiProps>,
   displayName?: string
-) {
+): React.FunctionComponent<Omit<Props, keyof WithJotaiProps>> {
   // Wrap the render method to make it reactive.
   if (!(typeof Component.prototype.render === 'function')) {
     throw new Error(
@@ -53,6 +56,13 @@ export function classComponentWithJotai<
       return this.props._render(() => super.render());
     }
   }
+
+  Object.defineProperty(ReactiveSubclass, 'name', {
+    value: displayName ?? Component.name,
+    configurable: true,
+    writable: false,
+    enumerable: false,
+  });
 
   const WrappedComponent = React.forwardRef(
     (props: Props, ref: React.Ref<ComponentT>) => {
@@ -112,7 +122,9 @@ export function classComponentWithJotai<
           const writeOnlyAtom = atom(
             () => undefined,
             (get, set) => {
-              result = perform(get, set);
+              result = callWithCapability({ get, set }, () =>
+                perform(get, set)
+              );
             }
           );
           world.capabilities.set(writeOnlyAtom, undefined);
@@ -142,16 +154,17 @@ export function classComponentWithJotai<
       );
 
       useEffect(() => {
-        return () => {
+        const res = () => {
           mounted.current = false;
           // eslint-disable-next-line react-hooks/exhaustive-deps
           for (const { unsubscribe } of subscriptions.current.values()) {
             unsubscribe();
           }
         };
+        return res;
       }, []);
 
-      const enhancedProps: EnhancedProps = {
+      const enhancedProps: WithJotaiProps = {
         get: getAtom,
         act,
         _revision: revision,
@@ -172,5 +185,5 @@ export function classComponentWithJotai<
     writable: false,
   });
 
-  return WrappedComponent;
+  return WrappedComponent as any;
 }

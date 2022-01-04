@@ -1,4 +1,4 @@
-import { mapGetWithDefault } from '@jitl/util';
+import { mapGetOrCreate } from '@jitl/util';
 import { Atom } from 'jotai';
 import { ReadCapability, SubscribeCapability } from '..';
 
@@ -42,28 +42,25 @@ export class ChangeSubscriber {
   constructor(private config: SchedulerConfig) {}
 
   subscribeChangeEffect(atom: AnyAtom, callback: Effect): () => void {
-    const changeTracker = mapGetWithDefault(this.subscriptions, atom, () => {
+    const changeTracker = mapGetOrCreate(this.subscriptions, atom, () => {
       const t = new AtomChangeSubscription(atom, this.config);
-      this.config.capabilities.subscribe(
-        atom,
-        changeTracker.handleAtomMaybeChange
-      );
+      this.config.capabilities.subscribe(atom, t.handleAtomMaybeChange);
       return t;
     }).value;
 
     changeTracker.listeners.add(callback);
 
     return () => {
-      if (!changeTracker) {
-        throw new Error('unreachable');
-      }
-
       changeTracker.listeners.delete(callback);
       if (changeTracker.listeners.size === 0) {
         changeTracker.unsubscribe();
         this.subscriptions.delete(atom);
       }
     };
+  }
+
+  getSubscribedAtoms(): IterableIterator<AnyAtom> {
+    return this.subscriptions.keys();
   }
 }
 
