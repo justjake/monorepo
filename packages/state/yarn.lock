@@ -7,34 +7,10 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.6.tgz#cc1589c9ee853b389e67e8fb4384e0f250a139b9"
   integrity sha512-+XBAjfZmmivILUzO0HwBJoYkAyyySSLg5KCGBDFLomJo0sV6szvVLAf4ANZZ0pfWzgEds5KmGLG9D5hfEqOhaA==
 
-"@types/prop-types@*":
-  version "15.7.4"
-  resolved "https://registry.yarnpkg.com/@types/prop-types/-/prop-types-15.7.4.tgz#fcf7205c25dff795ee79af1e30da2c9790808f11"
-  integrity sha512-rZ5drC/jWjrArrS8BR6SIr4cWpW09RNTYt9AMZo3Jwwif+iacXAqgVjm0B0Bv/S1jhDXKHqRVNCbACkJ89RAnQ==
-
-"@types/react@^17.0.38":
-  version "17.0.38"
-  resolved "https://registry.yarnpkg.com/@types/react/-/react-17.0.38.tgz#f24249fefd89357d5fa71f739a686b8d7c7202bd"
-  integrity sha512-SI92X1IA+FMnP3qM5m4QReluXzhcmovhZnLNm3pyeQlooi02qI7sLiepEYqT678uNiyc25XfCqxREFpy3W7YhQ==
-  dependencies:
-    "@types/prop-types" "*"
-    "@types/scheduler" "*"
-    csstype "^3.0.2"
-
-"@types/scheduler@*":
-  version "0.16.2"
-  resolved "https://registry.yarnpkg.com/@types/scheduler/-/scheduler-0.16.2.tgz#1a62f89525723dde24ba1b01b092bf5df8ad4d39"
-  integrity sha512-hppQEBDmlwhFAXKJX2KnWLYu5yMfi91yazPb2l+lbJiwW+wdo1gNeRA+3RgNSO39WYX2euey41KEwnqesU2Jew==
-
-csstype@^3.0.2:
-  version "3.0.10"
-  resolved "https://registry.yarnpkg.com/csstype/-/csstype-3.0.10.tgz#2ad3a7bed70f35b965707c092e5f30b327c290e5"
-  integrity sha512-2u44ZG2OcNUO9HDp/Jl8C07x6pU/eTR3ncV91SiK3dhG9TWvRVsCoJw14Ckx5DgWkzGA3waZWO3d7pgqpUI/XA==
-
-"jotai@npm:@jitl/jotai@^1.4.9":
-  version "1.4.9"
-  resolved "https://registry.yarnpkg.com/@jitl/jotai/-/jotai-1.4.9.tgz#fc8f0b109ffece5a3eb5e6d336a1e7f29c6f5321"
-  integrity sha512-052Fsmo/HhBKzKNrbPotlZriEhFCJw1WdcPocYboC8VDiVqd/ZEBDuKy+EQcUsrhrApCD9wGKMxD0vvxFfhfWQ==
+"jotai@npm:@jitl/jotai@^1.5.1":
+  version "1.5.1"
+  resolved "https://registry.yarnpkg.com/@jitl/jotai/-/jotai-1.5.1.tgz#b68875d3333b8ee7100eeab33f715cdd0fd2085c"
+  integrity sha512-JsrQM+F2bQtm7/etSW8xvKa91GsgIb3Vv3Gs5B/KlqXSjvT7IcWrzs9PW50o+0BooWPbSsuKO20uUqEYdp+CTA==
 
 proxy-compare@^2.0.2:
   version "2.0.2"

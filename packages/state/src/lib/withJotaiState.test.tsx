@@ -10,12 +10,9 @@ import userEvent from '@testing-library/user-event';
 import { atom, WritableAtom } from 'jotai';
 import { ChangeEventHandler, Component } from 'react';
 import { act } from 'react-dom/test-utils';
-import {
-  classComponentWithJotai,
-  WithJotaiProps,
-  WorldProvider,
-} from './withJotaiState';
+import { classComponentWithJotai, WithJotaiProps } from './withJotaiState';
 import { World } from './World';
+import { WorldProvider } from './WorldProvider';
 
 const name = atom('jake');
 const capitalizedName = atom(

@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "type": "commonjs",
   "dependencies": {
-    "jotai": "npm:@jitl/jotai@^1.4.9",
+    "jotai": "npm:@jitl/jotai@^1.5.1",
     "proxy-compare": "^2.0.2"
   },
   "devDependencies": {

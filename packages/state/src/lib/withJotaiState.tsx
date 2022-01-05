@@ -2,17 +2,9 @@ import { atom, Atom, Getter, Setter } from 'jotai';
 import * as React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { callWithCapability } from '..';
-import { World } from './World';
+import { useWorld } from './WorldProvider';
 
 type AnyAtom = Atom<unknown>;
-
-const WorldContext = React.createContext<World | undefined>(undefined);
-
-/**
- * Provide a World to class-based Jotai components.
- */
-export const WorldProvider = WorldContext.Provider;
-
 type RunAction = <R>(perform: (get: Getter, set: Setter) => R) => R;
 
 /**
@@ -66,13 +58,7 @@ export function classComponentWithJotai<
 
   const WrappedComponent = React.forwardRef(
     (props: Props, ref: React.Ref<ComponentT>) => {
-      const world = React.useContext(WorldContext);
-      if (!world) {
-        throw new Error(
-          "Can't use classComponentWithJotai without a WorldProvider"
-        );
-      }
-
+      const world = useWorld();
       const [revision, setRevision] = useState(0);
       const mounted = useRef(true);
       const iteration = useRef(0);
