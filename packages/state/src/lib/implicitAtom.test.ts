@@ -102,4 +102,13 @@ describe('implicit atoms', () => {
       done: true,
     });
   });
+
+  describe('toString', () => {
+    it('returns a string', () => {
+      const atom = implicitAtom(() => 'hello');
+      expect(atom.toString()).toMatch(
+        /^WritableImplicitAtom \d \(created at\//
+      );
+    });
+  });
 });

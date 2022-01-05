@@ -27,11 +27,59 @@ import {
 import { proxyCompareAtom } from './proxyCompareAtom';
 import { shallowEqual } from './shallowEqualAtom';
 
+function isDebugMode() {
+  return (
+    typeof process === 'object' &&
+    typeof process.env === 'object' &&
+    process.env['NODE_ENV'] !== 'production'
+  );
+}
+
+function relevantStackTrace(above: number) {
+  const stack = new Error().stack || '';
+  if (stack.length === 0) {
+    return stack;
+  }
+
+  const lines = stack.split('\n').slice(above);
+  const isModuleBoundary = (line: string) =>
+    line.match(/node_modules\/|__webpack_require__/);
+
+  const firstFrameworkLine = lines.findIndex(isModuleBoundary);
+  const lastFrameworkLine =
+    lines.length - lines.slice().reverse().findIndex(isModuleBoundary);
+
+  if (firstFrameworkLine > 0) {
+    return lines.slice(0, firstFrameworkLine).join('\n').trim();
+  }
+
+  if (firstFrameworkLine === 0) {
+    return lines.slice(lastFrameworkLine).join('\n').trim();
+  }
+
+  return lines.join('\n').trim();
+}
+
+let ImplicitAtomId = 0;
+
 /**
  * An implicit atom can be read using the current scope's capabilities without
  * needing access to a `get` function.
  */
 abstract class ImplicitAtom<T> implements Atom<T> {
+  #debugInfo?: string;
+  #id: number;
+
+  constructor() {
+    this.#id = ++ImplicitAtomId;
+    if (isDebugMode()) {
+      const relevant = relevantStackTrace(5);
+      this.#debugInfo = `${this.constructor.name} ${
+        this.#id
+      } (created ${relevant})`;
+    }
+  }
+
   get state(): T {
     return currentCapabilities.must.get(this);
   }
@@ -41,7 +89,13 @@ abstract class ImplicitAtom<T> implements Atom<T> {
   }
 
   // Implement Atom
+  debugLabel?: string | undefined;
+
   abstract get read(): Atom<T>['read'];
+
+  toString() {
+    return this.debugLabel || this.#debugInfo || `implicitAtom${this.#id}`;
+  }
 }
 
 /**
