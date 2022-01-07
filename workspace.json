@@ -2,6 +2,8 @@
   "version": 2,
   "projects": {
     "pinch-zoom": "packages/pinch-zoom",
+    "playground": "packages/playground",
+    "playground-e2e": "packages/playground-e2e",
     "state": "packages/state",
     "util": "packages/util"
   }

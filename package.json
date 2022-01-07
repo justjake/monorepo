@@ -5,6 +5,9 @@
   "scripts": {},
   "private": true,
   "dependencies": {
+    "jotai": "npm:@jitl/jotai@^1.5.1",
+    "@emotion/react": "11.5.0",
+    "@emotion/styled": "11.3.0",
     "core-js": "^3.6.5",
     "react": "^17.0.2",
     "react-dom": "17.0.2",
@@ -12,7 +15,9 @@
     "tslib": "^2.0.0"
   },
   "devDependencies": {
+    "@emotion/babel-plugin": "11.3.0",
     "@nrwl/cli": "13.4.1",
+    "@nrwl/cypress": "13.4.2",
     "@nrwl/eslint-plugin-nx": "13.4.1",
     "@nrwl/jest": "13.4.1",
     "@nrwl/js": "13.4.1",
@@ -36,8 +41,10 @@
     "@typescript-eslint/eslint-plugin": "~5.3.0",
     "@typescript-eslint/parser": "~5.3.0",
     "babel-jest": "27.2.3",
+    "cypress": "^9.1.0",
     "eslint": "8.2.0",
     "eslint-config-prettier": "8.1.0",
+    "eslint-plugin-cypress": "^2.10.3",
     "eslint-plugin-import": "2.25.2",
     "eslint-plugin-jsx-a11y": "6.4.1",
     "eslint-plugin-react": "7.26.1",

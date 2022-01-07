@@ -54,6 +54,7 @@ export function memoizeWithLRU<Args extends unknown[], R>(
 
   const root: MemoNode<{ result: R; args: Args }> = {};
   const lru: Args[] = [];
+  const infinite = limit === Infinity;
 
   return (...args: Args) => {
     let node = root;
@@ -63,8 +64,10 @@ export function memoizeWithLRU<Args extends unknown[], R>(
     }
 
     if (node.memo) {
-      lru.splice(lru.indexOf(node.memo.args), 1);
-      lru.push(node.memo.args);
+      if (!infinite) {
+        lru.splice(lru.indexOf(node.memo.args), 1);
+        lru.push(node.memo.args);
+      }
       return node.memo.result;
     }
 
@@ -73,7 +76,9 @@ export function memoizeWithLRU<Args extends unknown[], R>(
       args,
       result,
     };
-    lru.push(args);
+    if (!infinite) {
+      lru.push(args);
+    }
 
     if (lru.length > limit) {
       const del = lru.shift();

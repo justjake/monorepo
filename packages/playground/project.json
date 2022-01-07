@@ -1,0 +1,73 @@
+{
+  "root": "packages/playground",
+  "sourceRoot": "packages/playground/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nrwl/web:webpack",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "compiler": "babel",
+        "outputPath": "dist/packages/playground",
+        "index": "packages/playground/src/index.html",
+        "baseHref": "/",
+        "main": "packages/playground/src/main.tsx",
+        "polyfills": "packages/playground/src/polyfills.ts",
+        "tsConfig": "packages/playground/tsconfig.app.json",
+        "assets": [
+          "packages/playground/src/favicon.ico",
+          "packages/playground/src/assets"
+        ],
+        "styles": [],
+        "scripts": [],
+        "webpackConfig": "@nrwl/react/plugins/webpack"
+      },
+      "configurations": {
+        "production": {
+          "fileReplacements": [
+            {
+              "replace": "packages/playground/src/environments/environment.ts",
+              "with": "packages/playground/src/environments/environment.prod.ts"
+            }
+          ],
+          "optimization": true,
+          "outputHashing": "all",
+          "sourceMap": false,
+          "namedChunks": false,
+          "extractLicenses": true,
+          "vendorChunk": false
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nrwl/web:dev-server",
+      "options": {
+        "buildTarget": "playground:build",
+        "hmr": true
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "playground:build:production",
+          "hmr": false
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/playground/**/*.{ts,tsx,js,jsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["coverage/packages/playground"],
+      "options": {
+        "jestConfig": "packages/playground/jest.config.js",
+        "passWithNoTests": true
+      }
+    }
+  },
+  "tags": []
+}
