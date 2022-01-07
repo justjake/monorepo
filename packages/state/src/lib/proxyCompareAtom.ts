@@ -5,6 +5,7 @@ import {
   createProxy,
   affectedToPathList,
 } from 'proxy-compare';
+import { readReducerAtom } from './readReducerAtom';
 import { shallowEqual } from './shallowEqualAtom';
 
 const DEBUG = false;
@@ -56,6 +57,23 @@ interface ProxyState<T> {
   value: T;
 }
 
+class ProxyCompareAtomState<T> implements ProxyState<T> {
+  deps = new Set<Atom<unknown>>();
+  previousValues = new WeakMap<Atom<unknown>, unknown>();
+  affected = new WeakMap<object, Set<unknown>>();
+
+  proxyCache: WeakMap<object, unknown>;
+  value: T = undefined as never;
+
+  constructor(proxyCache: WeakMap<object, unknown> = new WeakMap()) {
+    this.proxyCache = proxyCache;
+  }
+
+  [Symbol.toStringTag] = 'ProxyCompareAtomState';
+}
+
+const Initial = Symbol('initial');
+
 /**
  * Create a Jotai atom that uses `proxy-compare` for fine-grained dependency
  * tracking. It will only recompute when the properties you depend on change.
@@ -66,20 +84,10 @@ interface ProxyState<T> {
  * proxy objects.
  */
 export function proxyCompareAtom<T>(read: Atom<T>['read']): Atom<T> {
-  const stateAtom: Atom<ProxyState<T>> = atom((rawGet) => {
-    // We can fetch our previous value once we've run a single time.
-    // but on first run, this will throw 'no atom init'.
-    let previousState: ProxyState<T> | undefined;
-    try {
-      previousState = rawGet(stateAtom);
-    } catch (error) {
-      if (error && error instanceof Error && error.message === 'no atom init') {
-        previousState = undefined;
-      } else {
-        throw error;
-      }
-    }
-
+  const stateAtom: Atom<ProxyState<T>> = readReducerAtom<
+    undefined,
+    ProxyState<T>
+  >(undefined, (previousState, rawGet) => {
     if (previousState) {
       const {
         deps: previousDeps,
@@ -127,14 +135,9 @@ export function proxyCompareAtom<T>(read: Atom<T>['read']): Atom<T> {
     }
 
     // Perform computation and track a new set of proxy dependencies.
-    const newState: ProxyState<T> = {
-      deps: new Set(),
-      affected: new WeakMap(),
-      previousValues: new WeakMap(),
-      proxyCache: previousState?.proxyCache || new WeakMap(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      value: undefined as any,
-    };
+    const newState: ProxyState<T> = new ProxyCompareAtomState<T>(
+      previousState?.proxyCache
+    );
 
     function proxyGet<T>(atom: Atom<T>): T {
       const newValue = rawGet(atom);
@@ -157,5 +160,9 @@ export function proxyCompareAtom<T>(read: Atom<T>['read']): Atom<T> {
     return newState;
   });
 
-  return atom<T>((get) => get(stateAtom).value);
+  const publicAtom = atom<T>((get) => get(stateAtom).value);
+  stateAtom.toString = () =>
+    `proxyCompareAtom internal state for ${publicAtom.toString()}`;
+
+  return publicAtom;
 }

@@ -19,7 +19,7 @@
  * 5. Stop providing global capability to access your jotai Store.
  */
 
-import { Atom, WritableAtom, atom, Getter } from 'jotai';
+import { Atom, WritableAtom, atom, Getter, Setter } from 'jotai';
 import {
   currentCapabilities,
   callWithCapability,
@@ -89,7 +89,8 @@ abstract class ImplicitAtom<T> implements Atom<T> {
   }
 
   // Implement Atom
-  debugLabel?: string | undefined;
+  debugLabel?: string;
+  init?: T;
 
   abstract get read(): Atom<T>['read'];
 
@@ -109,6 +110,7 @@ export class ComputedAtom<T> extends ImplicitAtom<T> implements Atom<T> {
     this.atom = proxyCompareAtom((get) =>
       callWithCapability({ get }, () => compute(get))
     );
+    this.atom.debugLabel = `internal atom for ${this.toString()}`;
   }
 
   override get read() {
@@ -123,10 +125,8 @@ export function computedAtom<T>(read: (getter: Getter) => T): ComputedAtom<T> {
 
 export class WritableImplicitAtom<T>
   extends ImplicitAtom<T>
-  implements WritableAtom<T, T>
+  implements WritableAtom<T, T, void>
 {
-  private readonly atom: WritableAtom<T, T>;
-
   setState(value: T) {
     const shouldSet = currentCapabilities.canGet()
       ? true
@@ -147,22 +147,18 @@ export class WritableImplicitAtom<T>
 
   constructor(public getInitialState: () => T) {
     super();
-    this.atom = atom(this.getInitialState());
+    this.init = this.getInitialState();
   }
 
   // Interface
-  override get read() {
-    return this.atom.read;
-  }
-
-  get write() {
-    return this.atom.write;
-  }
+  override read = (get: Getter): T => get(this);
+  write: WritableAtom<T, T>['write'] = (get, set, value): void =>
+    set(this, value);
 }
 
 export function implicitAtom<T>(
   getInitialState: () => T
-): WritableImplicitAtom<T> {
+): WritableImplicitAtom<T> & WritableAtom<T, T, void> {
   return new WritableImplicitAtom(getInitialState);
 }
 

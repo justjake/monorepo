@@ -1,8 +1,10 @@
+import { memoizeWithWeakMap } from '@jitl/util';
+import { Atom } from 'jotai';
 import { atomWithReducer } from 'jotai/utils';
+import { readReducerAtom } from './readReducerAtom';
 
 export function shallowEqual<T>(old: T, update: T): boolean {
-  // TODO
-  return old === update;
+  return old === update; // TODO
 }
 
 /**
@@ -15,5 +17,17 @@ export function shallowEqualAtom<T>(initialState: T) {
       return current;
     }
     return update;
+  });
+}
+
+const EMPTY = Symbol('empty');
+
+export function asShallowEqualAtom<T>(atom: Atom<T>): Atom<T> {
+  return readReducerAtom(EMPTY, (prev, get) => {
+    const next = get(atom);
+    if (prev !== EMPTY && shallowEqual(prev, next)) {
+      return prev;
+    }
+    return next;
   });
 }
