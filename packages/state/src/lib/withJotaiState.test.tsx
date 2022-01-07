@@ -43,19 +43,30 @@ class ClassBasedComponent extends Component<
 
 const WrappedComponent = classComponentWithJotai(ClassBasedComponent);
 
-it('requires World provider', () => {
-  // Error.
-  expect(() => render(<WrappedComponent nameAtom={name} />)).toThrowError(
-    /WorldProvider/
-  );
+describe('with console.error muted', () => {
+  const originalError = console.error;
+  beforeEach(() => {
+    console.error = jest.fn();
+  });
 
-  // Ok.
-  const world = World.syncWorld();
-  render(
-    <WorldProvider value={world}>
-      <WrappedComponent nameAtom={name} />
-    </WorldProvider>
-  );
+  afterEach(() => {
+    console.error = originalError;
+  });
+
+  it('requires World provider', () => {
+    // Error.
+    expect(() => render(<WrappedComponent nameAtom={name} />)).toThrowError(
+      /WorldProvider/
+    );
+
+    // Ok.
+    const world = World.syncWorld();
+    render(
+      <WorldProvider value={world}>
+        <WrappedComponent nameAtom={name} />
+      </WorldProvider>
+    );
+  });
 });
 
 it('rerenders when atom changes', async () => {

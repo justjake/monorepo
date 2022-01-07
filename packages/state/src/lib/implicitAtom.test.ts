@@ -5,10 +5,25 @@ import {
   dropTopLevelCapability,
   enterTopLevelCapability,
   jotaiStoreCapabilities,
-  TopLevelCapabilities,
 } from './implicitCapabilities';
 import { computedAtom, implicitAtom } from './implicitAtom';
-import { useTestWorld } from './implicitCapabilities.spec';
+
+function useTestWorld() {
+  const state: { world: ReturnType<typeof jotaiStoreCapabilities> } = {
+    world: undefined as any,
+  };
+
+  beforeEach(() => {
+    state.world = jotaiStoreCapabilities(createStore());
+    enterTopLevelCapability(state.world);
+  });
+
+  afterEach(() => {
+    dropTopLevelCapability(state.world);
+  });
+
+  return state;
+}
 
 describe('implicit atoms', () => {
   const state = useTestWorld();
@@ -106,9 +121,7 @@ describe('implicit atoms', () => {
   describe('toString', () => {
     it('returns a string', () => {
       const atom = implicitAtom(() => 'hello');
-      expect(atom.toString()).toMatch(
-        /^WritableImplicitAtom \d \(created at\//
-      );
+      expect(atom.toString()).toMatch(/^WritableImplicitAtom \d \(created at/);
     });
   });
 });

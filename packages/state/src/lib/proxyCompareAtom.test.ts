@@ -1,11 +1,10 @@
-import { atom } from 'jotai';
+import { atom, createStore } from 'jotai';
 import { proxyCompareAtom } from './proxyCompareAtom';
-import { useTestWorld } from './implicitCapabilities.spec';
+import { jotaiStoreCapabilities } from '..';
 
 describe('proxyCompareAtom', () => {
-  const state = useTestWorld();
-
   it('example of subscription behavior', () => {
+    const store = jotaiStoreCapabilities(createStore());
     const called = jest.fn();
     const updated = jest.fn();
     const a = atom('a');
@@ -19,36 +18,37 @@ describe('proxyCompareAtom', () => {
     expect(called).toHaveBeenCalledTimes(0);
 
     // Computed atoms are not computed when their dependencies are updated
-    state.world.set(a, 'c');
+    store.set(a, 'c');
     expect(called).toHaveBeenCalledTimes(0);
 
     // NOT TRUE: Computed atoms are computed each time by default
     // ACTUALLY TRY: even without subscribers, computed atoms are memoized
     // (Note: is this leakier than permitted for Notion?)
-    state.world.get(computed);
+    store.get(computed);
     expect(called).toHaveBeenCalledTimes(1);
-    state.world.get(computed);
+    store.get(computed);
     expect(called).toHaveBeenCalledTimes(1);
 
     called.mockReset();
-    const unsubscribe = state.world.subscribe(computed, updated);
+    const unsubscribe = store.subscribe(computed, updated);
 
     // Computed atoms are not computed when a subscriber is attached
-    state.world.set(a, 'a');
+    store.set(a, 'a');
     expect(called).toHaveBeenCalledTimes(0);
     // Computed atoms call subscriber when a dependency changes,
     expect(updated).toHaveBeenCalledTimes(1);
 
     // Computed atoms with subscriber are memoized
-    state.world.get(computed);
+    store.get(computed);
     expect(called).toHaveBeenCalledTimes(1);
-    state.world.get(computed);
+    store.get(computed);
     expect(called).toHaveBeenCalledTimes(1);
 
     unsubscribe();
   });
 
   it('should compute once per change', () => {
+    const store = jotaiStoreCapabilities(createStore());
     const called = jest.fn();
     const updated = jest.fn();
     const a = atom('a');
@@ -57,13 +57,13 @@ describe('proxyCompareAtom', () => {
       called();
       return get(a) + get(b);
     });
-    const unsubscribe = state.world.subscribe(computed, updated);
-    expect(state.world.get(computed)).toBe('ab');
+    const unsubscribe = store.subscribe(computed, updated);
+    expect(store.get(computed)).toBe('ab');
     expect(called).toBeCalledTimes(1);
 
-    state.world.set(a, 'c');
-    expect(state.world.get(computed)).toBe('cb');
-    expect(state.world.get(computed)).toBe('cb');
+    store.set(a, 'c');
+    expect(store.get(computed)).toBe('cb');
+    expect(store.get(computed)).toBe('cb');
     expect(called).toBeCalledTimes(2);
 
     unsubscribe();
@@ -71,6 +71,7 @@ describe('proxyCompareAtom', () => {
 
   describe('when dependencies are plain objects', () => {
     it('updates when an important property changes', () => {
+      const store = jotaiStoreCapabilities(createStore());
       const called = jest.fn();
       const a = atom({ important: 'a', ignored: 1 });
       const b = atom({ important: 'b', ignored: 2 });
@@ -79,15 +80,16 @@ describe('proxyCompareAtom', () => {
         return get(a).important + get(b).important;
       });
 
-      expect(state.world.get(computed)).toBe('ab');
+      expect(store.get(computed)).toBe('ab');
       expect(called).toBeCalledTimes(1);
 
-      state.world.set(a, { important: 'a', ignored: 3 });
-      expect(state.world.get(computed)).toBe('ab');
+      store.set(a, { important: 'a', ignored: 3 });
+      expect(store.get(computed)).toBe('ab');
       expect(called).toBeCalledTimes(1);
     });
 
     it('updates when a nested object identity changes', () => {
+      const store = jotaiStoreCapabilities(createStore());
       const ORIGINAL = { name: 'frob' };
       const COPY = { ...ORIGINAL };
 
@@ -98,15 +100,15 @@ describe('proxyCompareAtom', () => {
         return { ref: get(a).ref };
       });
 
-      expect(state.world.get(computed).ref).toBe(ORIGINAL);
+      expect(store.get(computed).ref).toBe(ORIGINAL);
       expect(called).toBeCalledTimes(1);
 
-      state.world.set(a, { ref: ORIGINAL, unimportant: 'bar' });
-      expect(state.world.get(computed).ref).toBe(ORIGINAL);
+      store.set(a, { ref: ORIGINAL, unimportant: 'bar' });
+      expect(store.get(computed).ref).toBe(ORIGINAL);
       expect(called).toBeCalledTimes(1);
 
-      state.world.set(a, { ref: COPY, unimportant: 'baz' });
-      expect(state.world.get(computed).ref).toBe(COPY);
+      store.set(a, { ref: COPY, unimportant: 'baz' });
+      expect(store.get(computed).ref).toBe(COPY);
       expect(called).toBeCalledTimes(2);
     });
   });
