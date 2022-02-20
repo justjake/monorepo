@@ -1,6 +1,7 @@
 {
   "version": 2,
   "projects": {
+    "notion-api": "packages/notion-api",
     "pinch-zoom": "packages/pinch-zoom",
     "playground": "packages/playground",
     "playground-e2e": "packages/playground-e2e",

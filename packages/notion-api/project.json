@@ -1,0 +1,34 @@
+{
+  "root": "packages/notion-api",
+  "sourceRoot": "packages/notion-api/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/notion-api/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["coverage/packages/notion-api"],
+      "options": {
+        "jestConfig": "packages/notion-api/jest.config.js",
+        "passWithNoTests": true
+      }
+    },
+    "build": {
+      "executor": "@nrwl/node:package",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/notion-api",
+        "tsConfig": "packages/notion-api/tsconfig.lib.json",
+        "packageJson": "packages/notion-api/package.json",
+        "main": "packages/notion-api/src/index.ts",
+        "assets": ["packages/notion-api/*.md"]
+      }
+    }
+  },
+  "tags": []
+}
