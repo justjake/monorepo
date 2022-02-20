@@ -8,23 +8,28 @@ const StyledApp = styled.div`
   // Your style here
 `;
 
-const helloAtom = implicitAtom(() => 'hello');
-const worldAtom = implicitAtom(() => 'world');
-const computed = computedAtom(
-  () => `${helloAtom.state} to the ${worldAtom.state}`
-);
+const helloAtom = atom('hello');
+const worldAtom = atom('world');
+const capitalize = atom(null, (get, set) => {
+  set(worldAtom, get(worldAtom).toUpperCase());
+  set(helloAtom, get(helloAtom).toUpperCase());
+});
+const computed = atom((get) => `${get(helloAtom)} to the ${get(worldAtom)}`);
 
 export function App() {
   useAtomsDevtools('World');
   const [hello, setHello] = useAtom(helloAtom);
+  const [, setCapitalize] = useAtom(capitalize);
   const [world] = useAtom(worldAtom);
   const [computedState] = useAtom(computed);
 
   useEffect(() => {
     setTimeout(() => {
-      setHello('HELLO');
+      setHello('goodbye');
     }, 50);
-  }, [setHello]);
+
+    setTimeout(setCapitalize, 100);
+  }, [setHello, setCapitalize]);
 
   return (
     <StyledApp>
