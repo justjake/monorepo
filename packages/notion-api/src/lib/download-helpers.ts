@@ -8,6 +8,10 @@ const fsPromises = fs.promises;
 import * as emojiUnicode from 'emoji-unicode';
 import { unreachable } from '@jitl/util';
 
+const EMOJI_DATASOURCE_APPLE_PATH = path.dirname(
+  require.resolve('emoji-datasource-apple')
+);
+
 /**
  * Download image at `url` to a path in `directory` starting with
  * `filenamePrefix` if it does not exist, or return the existing path on disk
@@ -112,8 +116,8 @@ export async function ensureEmojiCopied(args: {
   const codepoints = emojiUnicode(emoji).split(' ').join('-');
   const basename = `${codepoints}.png`;
   const source = path.join(
-    __dirname,
-    `node_modules/emoji-datasource-apple/img/apple/64/${codepoints}.png`
+    EMOJI_DATASOURCE_APPLE_PATH,
+    `img/apple/64/${codepoints}.png`
   );
   const destination = path.join(directory, `emoji.${basename}.png`);
 

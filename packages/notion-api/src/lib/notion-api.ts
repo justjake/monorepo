@@ -1,12 +1,14 @@
 import { objectEntries } from '@jitl/util';
 import { Client as NotionClient } from '@notionhq/client';
-
 import {
   GetBlockResponse,
   GetPageResponse,
-  ListBlockChildrenParameters,
+  QueryDatabaseParameters,
 } from '@notionhq/client/build/src/api-endpoints';
 
+export { NotionClient };
+
+export type EmptyObject = Record<string, never>;
 export interface PaginatedList<T> {
   object: 'list';
   results: T[];
@@ -18,17 +20,6 @@ export interface PaginatedArgs {
   start_cursor?: string;
   page_size?: number;
 }
-
-type PaginatedListFn<T> = (args: PaginatedArgs) => Promise<PaginatedList<T>>;
-
-/**
- * Workaround for variance issues.
- * @template T The type of the callback.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type BivariantCallback<T extends (...args: any[]) => any> = {
-  bivarianceHack(...args: Parameters<T>): ReturnType<T>;
-}['bivarianceHack'];
 
 /**
  * A Notion API page.
@@ -64,6 +55,10 @@ export type BlockWithChildren = Block & { children: BlockWithChildren[] };
  * forming a recursive tree of blocks.
  */
 export type PageWithChildren = Page & { children: BlockWithChildren[] };
+
+export type Filter = NonNullable<QueryDatabaseParameters['filter']>;
+export type PropertyFilter = Extract<Filter, { type?: string }>;
+export type Sorts = NonNullable<QueryDatabaseParameters['sorts']>;
 
 /**
  * Iterate over all results in a paginated list API.
@@ -162,37 +157,39 @@ export async function getBlockWithChildren(
   return block;
 }
 
-interface BacklinkFrom {
+export interface BacklinkFrom {
   mentionedFromPageId: string;
   mentionedFromBlockId: string;
 }
 
-interface Backlink extends BacklinkFrom {
+export interface Backlink extends BacklinkFrom {
   mentionedPageId: string;
 }
 
 const NOTION_DOMAINS = ['.notion.so', '.notion.site', '.notion.com'];
 
-function isNotionDomain(domain: string): boolean {
+export function isNotionDomain(domain: string): boolean {
   return NOTION_DOMAINS.some((suffix) => domain.endsWith(suffix));
 }
 
 /**
  * Records links from a page to other pages.
  */
-class Backlinks {
-  pageIdToBacklinks = new Map<string, BacklinkFrom[]>();
+export class Backlinks {
+  linksToPage = new Map<string, Backlink[]>();
+  private pageLinksToPageIds = new Map<string, Set<string>>();
 
   add(args: Backlink) {
-    const { mentionedPageId, mentionedFromPageId, mentionedFromBlockId } = args;
-    const backlinks = this.pageIdToBacklinks.get(mentionedPageId) || [];
-    this.pageIdToBacklinks.set(
-      mentionedPageId,
-      backlinks.concat({
-        mentionedFromPageId,
-        mentionedFromBlockId,
-      })
-    );
+    const { mentionedPageId, mentionedFromPageId } = args;
+    const backlinks = this.linksToPage.get(mentionedPageId) || [];
+    this.linksToPage.set(mentionedPageId, backlinks);
+    backlinks.push(args);
+
+    const forwardLinks =
+      this.pageLinksToPageIds.get(mentionedFromPageId) || new Set();
+    this.pageLinksToPageIds.set(mentionedFromPageId, forwardLinks);
+    forwardLinks.add(mentionedPageId);
+
     return args;
   }
 
@@ -239,12 +236,38 @@ class Backlinks {
     }
   }
 
-  get(pageId: string): BacklinkFrom[] {
-    return this.pageIdToBacklinks.get(pageId) || [];
+  getLinksToPage(pageId: string): BacklinkFrom[] {
+    return this.linksToPage.get(pageId) || [];
+  }
+
+  /**
+   * When we re-fetch a page and its children, we need to invalidate the old
+   * backlink data from those trees
+   */
+  deleteBacklinksFromPage(pageId: string) {
+    const pagesToScan = this.pageLinksToPageIds.get(pageId);
+    this.pageLinksToPageIds.delete(pageId);
+    if (!pagesToScan) {
+      return;
+    }
+    for (const mentionedPageId of pagesToScan) {
+      const backlinks = this.linksToPage.get(mentionedPageId);
+      if (!backlinks) {
+        continue;
+      }
+      const newBacklinks = backlinks.filter(
+        (backlink) => backlink.mentionedFromPageId !== pageId
+      );
+      if (newBacklinks.length === 0) {
+        this.linksToPage.delete(mentionedPageId);
+      } else {
+        this.linksToPage.set(mentionedPageId, newBacklinks);
+      }
+    }
   }
 }
 
-function visitChildBlocks(
+export function visitChildBlocks(
   blocks: BlockWithChildren[],
   fn: (block: BlockWithChildren) => void
 ): void {
@@ -275,12 +298,12 @@ export function getBlockData<Type extends BlockType>(
   return (block as any)[block.type];
 }
 
-type Property = Page['properties'][string];
-type PropertyType = Property['type'];
+export type Property = Page['properties'][string];
+export type PropertyType = Property['type'];
 type PropertyTypeMap = {
   [K in PropertyType]: Extract<Property, { type: K }>;
 };
-type PropertyDataMap = {
+export type PropertyDataMap = {
   [K in PropertyType]: PropertyTypeMap[K] extends { [key in K]: unknown }
     ? // @ts-expect-error "Too complex" although, it works?
       PropertyTypeMap[K][K]
@@ -358,8 +381,10 @@ function visitTextTokens(
   }
 }
 
-function buildBacklinks(pages: PageWithChildren[]): Backlinks {
-  const backlinks = new Backlinks();
+export function buildBacklinks(
+  pages: PageWithChildren[],
+  backlinks = new Backlinks()
+): Backlinks {
   for (const page of pages) {
     const fromPage: BacklinkFrom = {
       mentionedFromPageId: page.id,
@@ -402,10 +427,12 @@ function buildBacklinks(pages: PageWithChildren[]): Backlinks {
   return backlinks;
 }
 
-class ObjectIndex {
+export class NotionObjectIndex {
   pages: Map<string, PageWithChildren> = new Map();
   blocks: Map<string, BlockWithChildren> = new Map();
+  /** Parent block ID, may also be a page ID. */
   parentId: Map<string, string> = new Map();
+  /** Parent page ID. */
   parentPageId: Map<string, string | undefined> = new Map();
 
   addBlock(
