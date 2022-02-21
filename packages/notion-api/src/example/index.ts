@@ -1,5 +1,5 @@
-import path = require('path/posix');
-import { EmptyObject, NotionClient } from '..';
+import * as path from 'path';
+import { EmptyObject, NotionClient, NotionClientDebugLogger } from '..';
 import { CMS } from '../lib/content-management-system';
 
 function getNotionSecret() {
@@ -13,6 +13,7 @@ function getNotionSecret() {
 const Recipes = new CMS<EmptyObject>({
   database_id: 'a3aa29a6b2f242d1b4cf86fb578a5eea',
   notion: new NotionClient({
+    logger: NotionClientDebugLogger,
     auth: getNotionSecret(),
   }),
   slug: undefined,
@@ -28,5 +29,10 @@ const Recipes = new CMS<EmptyObject>({
 
 async function main() {
   // Fetch all data & assets
-  await Recipes.query();
+  for await (const recipe of Recipes.query()) {
+    await Recipes.downloadAssets(recipe);
+    console.log(recipe.frontmatter, recipe.content.children.length);
+  }
 }
+
+main();

@@ -1,10 +1,32 @@
 import { objectEntries } from '@jitl/util';
-import { Client as NotionClient } from '@notionhq/client';
+import { Client as NotionClient, Logger, LogLevel } from '@notionhq/client';
 import {
   GetBlockResponse,
   GetPageResponse,
   QueryDatabaseParameters,
 } from '@notionhq/client/build/src/api-endpoints';
+import { debug } from 'debug';
+
+export const DEBUG = debug('@jitl/notion-api');
+
+// API debugging w/ DEBUG=*
+const DEBUG_API = DEBUG.extend('@jitl/notion-api:api');
+type NotionClientLoggers = { [K in LogLevel]: typeof DEBUG_API };
+const DEBUG_API_LEVEL: { [K in LogLevel]: typeof DEBUG_API } = {
+  debug: DEBUG_API.extend('debug'),
+  info: DEBUG_API.extend('info'),
+  warn: DEBUG_API.extend('warn'),
+  error: DEBUG_API.extend('error'),
+};
+
+export type NotionClientDebugLogger = Logger & NotionClientLoggers;
+const logger: Logger = (level, message, extraInfo) => {
+  DEBUG_API_LEVEL[level]('%s %o', message, extraInfo);
+};
+export const NotionClientDebugLogger: NotionClientDebugLogger = Object.assign(
+  logger,
+  DEBUG_API_LEVEL
+);
 
 export { NotionClient };
 
@@ -60,6 +82,8 @@ export type Filter = NonNullable<QueryDatabaseParameters['filter']>;
 export type PropertyFilter = Extract<Filter, { type?: string }>;
 export type Sorts = NonNullable<QueryDatabaseParameters['sorts']>;
 
+const DEBUG_ITERATE = DEBUG.extend('iterate');
+
 /**
  * Iterate over all results in a paginated list API.
  * @param listFn API to call
@@ -69,16 +93,27 @@ export async function* iteratePaginatedAPI<Args extends PaginatedArgs, Item>(
   listFn: (args: Args) => Promise<PaginatedList<Item>>,
   firstPageArgs: Args
 ): AsyncIterableIterator<Item> {
-  let next_cursor: string | null = firstPageArgs.start_cursor || null;
+  let next_cursor: string | null | undefined = firstPageArgs.start_cursor;
   let has_more = true;
   let results: Item[] = [];
+  let total = 0;
+  let page = 0;
 
   while (has_more) {
     ({ results, next_cursor, has_more } = await listFn({
       ...firstPageArgs,
       start_cursor: next_cursor,
     }));
-
+    page++;
+    total += results.length;
+    DEBUG_ITERATE(
+      '%s: fetched page %s, %s (%s, %s total)',
+      listFn.name,
+      page,
+      next_cursor ? 'done' : 'has more',
+      results.length,
+      total
+    );
     yield* results;
   }
 }
@@ -107,6 +142,8 @@ function isFullBlock(block: GetBlockResponse): block is Block {
   return 'type' in block;
 }
 
+const DEBUG_CHILDREN = DEBUG.extend('children');
+
 /**
  * Recursively fetch all children of `parentBlockId` as `BlockWithChildren`.
  */
@@ -118,7 +155,13 @@ export async function getChildBlocksWithChildrenRecursively(
     notion,
     parentId
   )) as BlockWithChildren[];
-  return Promise.all(
+  DEBUG_CHILDREN('parent %s: fetched %s children', parentId, blocks.length);
+
+  if (blocks.length === 0) {
+    return [];
+  }
+
+  const result = await Promise.all(
     blocks.map(async (block) => {
       if (block.has_children) {
         block.children = await getChildBlocksWithChildrenRecursively(
@@ -131,6 +174,9 @@ export async function getChildBlocksWithChildrenRecursively(
       return block;
     })
   );
+  DEBUG_CHILDREN('parent %s: finished descendants', parentId);
+
+  return result;
 }
 
 // TODO: remove?
@@ -172,6 +218,8 @@ export function isNotionDomain(domain: string): boolean {
   return NOTION_DOMAINS.some((suffix) => domain.endsWith(suffix));
 }
 
+const DEBUG_BACKLINKS = DEBUG.extend('backlinks');
+
 /**
  * Records links from a page to other pages.
  */
@@ -190,6 +238,7 @@ export class Backlinks {
     this.pageLinksToPageIds.set(mentionedFromPageId, forwardLinks);
     forwardLinks.add(mentionedPageId);
 
+    DEBUG_BACKLINKS('added %s <-- %s', mentionedPageId, mentionedFromPageId);
     return args;
   }
 
@@ -205,6 +254,7 @@ export class Backlinks {
         return undefined;
       }
       const uuid = uuidWithDashes(idWithoutDashes);
+      DEBUG_BACKLINKS('url %s --> %s', url, uuid);
       return this.add({
         ...from,
         mentionedPageId: uuid,
@@ -244,9 +294,9 @@ export class Backlinks {
    * When we re-fetch a page and its children, we need to invalidate the old
    * backlink data from those trees
    */
-  deleteBacklinksFromPage(pageId: string) {
-    const pagesToScan = this.pageLinksToPageIds.get(pageId);
-    this.pageLinksToPageIds.delete(pageId);
+  deleteBacklinksFromPage(mentionedFromPageId: string) {
+    const pagesToScan = this.pageLinksToPageIds.get(mentionedFromPageId);
+    this.pageLinksToPageIds.delete(mentionedFromPageId);
     if (!pagesToScan) {
       return;
     }
@@ -256,12 +306,22 @@ export class Backlinks {
         continue;
       }
       const newBacklinks = backlinks.filter(
-        (backlink) => backlink.mentionedFromPageId !== pageId
+        (backlink) => backlink.mentionedFromPageId !== mentionedFromPageId
       );
       if (newBacklinks.length === 0) {
         this.linksToPage.delete(mentionedPageId);
-      } else {
+        DEBUG_BACKLINKS(
+          'removed all %s <-- %s',
+          mentionedPageId,
+          mentionedFromPageId
+        );
+      } else if (newBacklinks.length !== backlinks.length) {
         this.linksToPage.set(mentionedPageId, newBacklinks);
+        DEBUG_BACKLINKS(
+          'removed all %s <-- %s',
+          mentionedPageId,
+          mentionedFromPageId
+        );
       }
     }
   }

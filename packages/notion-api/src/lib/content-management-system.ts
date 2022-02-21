@@ -20,15 +20,19 @@ import {
   Property,
   PropertyFilter,
   Block,
+  DEBUG,
 } from './notion-api';
 import * as path from 'path';
-import * as fs from 'fs/promises';
+import * as fsOld from 'fs';
 import { objectEntries } from '@jitl/util';
 import { QueryDatabaseParameters } from '@notionhq/client/build/src/api-endpoints';
 import {
   ensureBlockImageDownloaded,
   ensurePageIconDownloaded,
 } from './download-helpers';
+
+const DEBUG_CMS = DEBUG.extend('cms');
+const fs = fsOld.promises;
 
 /**
  * Specifies that the CMS should look at the page property with name
@@ -53,7 +57,10 @@ type AnyExtraProperties = Record<string, unknown>;
 /**
  * Specifies that the CMS should compute a value for the page.
  */
-export interface CustomProperty<Result, ExtraProperties> {
+export interface CustomProperty<
+  Result,
+  ExtraProperties extends AnyExtraProperties
+> {
   (page: PageWithChildren, cms: CMS<ExtraProperties>): Result | Promise<Result>;
 }
 
@@ -236,13 +243,15 @@ export class CMS<ExtraProperties extends AnyExtraProperties> {
     ]);
 
     const extraProperties = {} as ExtraProperties;
-    for (const [key, compute] of objectEntries(this.config.extraProperties)) {
-      // TODO
-      (extraProperties as any)[key] = await computeProperty(
-        compute,
-        pageWithChildren,
-        this
-      );
+    if (this.config.extraProperties) {
+      for (const [key, compute] of objectEntries(this.config.extraProperties)) {
+        // TODO
+        (extraProperties as any)[key] = await computeProperty(
+          compute,
+          pageWithChildren,
+          this
+        );
+      }
     }
 
     return {
@@ -513,6 +522,8 @@ export async function computeProperty<
 // Page Cache
 ////////////////////////////////////////////////////////////////////////////////
 
+const DEBUG_CACHE = DEBUG_CMS.extend('cache');
+
 interface PageContentEntry {
   fetchedAtTs: number;
   last_edited_at: string;
@@ -538,8 +549,17 @@ class PageContentCache implements CacheConfig {
     return this.config.minPageContentAgeMs ?? 0;
   }
 
+  setup = false;
+  private async setupDirectory() {
+    if (this.setup === false && this.directory) {
+      await fs.mkdir(this.directory, { recursive: true });
+      this.setup = true;
+    }
+  }
+
   private async getCacheContents(pageId: string) {
     let cached = this.cache.get(pageId);
+    const fromMemory = Boolean(cached);
     const cacheFileName = this.getPageCacheFileName(pageId);
 
     if (!cached && cacheFileName) {
@@ -552,7 +572,7 @@ class PageContentCache implements CacheConfig {
       }
     }
 
-    return cached;
+    return { cached, fromMemory };
   }
 
   private async storeCacheContents(
@@ -564,6 +584,8 @@ class PageContentCache implements CacheConfig {
 
     if (cacheFileName) {
       try {
+        await this.setupDirectory();
+
         // TODO: implement atomic write as write then move
         await fs.writeFile(
           path.join(cacheFileName),
@@ -594,15 +616,22 @@ class PageContentCache implements CacheConfig {
     let newPage: Page | undefined =
       typeof pageIdOrPage === 'object' ? pageIdOrPage : undefined;
 
-    const cached = await this.getCacheContents(pageId);
+    const { cached, fromMemory } = await this.getCacheContents(pageId);
 
     if (cached) {
       const cacheAgeMs = Date.now() - cached.fetchedAtTs;
 
       if (cacheAgeMs < this.minPageContentAgeMs) {
+        DEBUG_CACHE(
+          '%s hit (%s): age %s < %s',
+          pageId,
+          fromMemory ? 'memory' : 'disk',
+          cacheAgeMs,
+          this.minPageContentAgeMs
+        );
         return {
           children: cached.children,
-          hit: true,
+          hit: fromMemory,
         };
       }
 
@@ -611,9 +640,15 @@ class PageContentCache implements CacheConfig {
         newPage ??= await this.fetchPage(notion, pageId);
 
         if (newPage && newPage.last_edited_time === cached.last_edited_at) {
+          DEBUG_CACHE(
+            '%s hit (%s): last_edited_time same %s',
+            pageId,
+            fromMemory ? 'memory' : 'disk',
+            newPage.last_edited_time
+          );
           return {
             children: cached.children,
-            hit: true,
+            hit: fromMemory,
           };
         }
       }
@@ -621,6 +656,7 @@ class PageContentCache implements CacheConfig {
 
     newPage ??= await this.fetchPage(notion, pageId);
 
+    DEBUG_CACHE('%s miss', pageId);
     // Even if we didn't get a whole page, we can still fetch the children
     // and the last_edited_time
     const content = await getChildBlocksWithChildrenRecursively(notion, pageId);
@@ -654,6 +690,8 @@ class PageContentCache implements CacheConfig {
 // Asset cache
 ////////////////////////////////////////////////////////////////////////////////
 
+const DEBUG_ASSETS = DEBUG_CMS.extend('assets');
+
 type AssetConfig = NonNullable<CMSConfig['assets']>;
 
 class AssetCache {
@@ -668,12 +706,22 @@ class AssetCache {
     return this.config.directory;
   }
 
+  setup = false;
+  private async setupDirectory() {
+    if (this.setup === false && this.directory) {
+      await fs.mkdir(this.directory, { recursive: true });
+      this.setup = true;
+    }
+  }
+
   readonly blockImages = {
     download: async (block: Block & { type: 'image' }) => {
+      await this.setupDirectory();
       const url = await ensureBlockImageDownloaded({
         block,
         directory: this.directory,
       });
+      DEBUG_ASSETS('%s: image stored %s', block.id, url);
       this.blockImageCache.set(block.id, url);
       return url;
     },
@@ -683,10 +731,16 @@ class AssetCache {
 
   readonly pageIcons = {
     download: async (page: Page) => {
+      await this.setupDirectory();
       const url = await ensurePageIconDownloaded({
         page,
         directory: this.directory,
       });
+      if (url) {
+        DEBUG_ASSETS('%s: icon stored %s', page.id, url);
+      } else {
+        DEBUG_ASSETS('%s: no icon', page.id);
+      }
       this.pageIconCache.set(page.id, url);
       return url;
     },

@@ -9,7 +9,10 @@
     "react-dom": "^17.0.2"
   },
   "dependencies": {
+    "@jitl/util": "*",
+    "@types/debug": "^4.1.7",
     "@types/mime-types": "^2.1.1",
+    "debug": "^4.3.3",
     "emoji-datasource-apple": "^7.0.2",
     "emoji-unicode": "^2.0.1",
     "mime-types": "^2.1.34",
