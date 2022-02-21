@@ -1,10 +1,12 @@
 import {
+  AssetRequest,
   BlockWithChildren,
   buildBacklinks,
   Filter,
+  getAssetRequestKey,
   getChildBlocksWithChildrenRecursively,
   iteratePaginatedAPI,
-  NotionObjectIndex,
+  performAssetRequest,
   Sorts,
   visitChildBlocks,
 } from '..';
@@ -26,10 +28,8 @@ import * as path from 'path';
 import * as fsOld from 'fs';
 import { objectEntries } from '@jitl/util';
 import { QueryDatabaseParameters } from '@notionhq/client/build/src/api-endpoints';
-import {
-  ensureBlockImageDownloaded,
-  ensurePageIconDownloaded,
-} from './download-helpers';
+import { Asset, ensureAssetInDirectory, getAssetKey } from './assets';
+import { NotionObjectIndex } from './cache';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
@@ -273,7 +273,9 @@ export class CMS<ExtraProperties extends AnyExtraProperties> {
     // Update data.
     buildBacklinks([cmsPage.content], this.backlinks);
     this.notionObjects.addPage(cmsPage.content);
-    // TODO: add children to object index
+    visitChildBlocks(cmsPage.content.children, (block) =>
+      this.notionObjects.addBlock(block, undefined)
+    );
   }
 
   private getVisibleFilter(): PropertyFilter | undefined {
@@ -429,22 +431,54 @@ export class CMS<ExtraProperties extends AnyExtraProperties> {
     }
   }
 
-  // TODO: starting to burn out, this part isn't as well-designed
   async downloadAssets(cmsPage: CMSPage<ExtraProperties>): Promise<void> {
     const assetCache = this.assets;
     if (!assetCache) {
       return;
     }
 
-    const tasks: Promise<unknown>[] = [];
-    tasks.push(assetCache.pageIcons.download(cmsPage.content));
+    const assetRequests: AssetRequest[] = [];
+    const enqueue = (req: AssetRequest) => assetRequests.push(req);
+
+    enqueue({
+      object: 'page',
+      id: cmsPage.content.id,
+      field: 'icon',
+    });
+    enqueue({
+      object: 'page',
+      id: cmsPage.content.id,
+      field: 'cover',
+    });
+
     visitChildBlocks(cmsPage.content.children, (block) => {
       if (block.type === 'image') {
-        tasks.push(assetCache.blockImages.download(block));
+        enqueue({
+          object: 'block',
+          id: block.id,
+          field: 'image',
+        });
+      }
+
+      if (block.type === 'callout') {
+        enqueue({
+          object: 'block',
+          id: block.id,
+          field: 'icon',
+        });
       }
     });
 
-    await Promise.all(tasks);
+    // TODO: concurrency limit
+    await Promise.all(
+      assetRequests.map((request) =>
+        assetCache.download({
+          cache: this.notionObjects,
+          notion: this.config.notion,
+          request,
+        })
+      )
+    );
   }
 }
 
@@ -697,10 +731,8 @@ type AssetConfig = NonNullable<CMSConfig['assets']>;
 class AssetCache {
   constructor(public config: AssetConfig) {}
 
-  private blockImageCache = new Map<string, string>();
-  private pageIconCache = new Map<string, string | undefined>();
-  // TODO
-  // private calloutIcons = new Map<string, string>()
+  private assetRequestCache = new Map<string, Asset>();
+  private assetFileCache = new Map<string, string>();
 
   get directory() {
     return this.config.directory;
@@ -714,36 +746,49 @@ class AssetCache {
     }
   }
 
-  readonly blockImages = {
-    download: async (block: Block & { type: 'image' }) => {
-      await this.setupDirectory();
-      const url = await ensureBlockImageDownloaded({
-        block,
-        directory: this.directory,
-      });
-      DEBUG_ASSETS('%s: image stored %s', block.id, url);
-      this.blockImageCache.set(block.id, url);
-      return url;
-    },
-    fromDisk: (block: Block & { type: 'image' }) =>
-      this.blockImageCache.get(block.id),
-  };
+  fromDisk(request: AssetRequest): string | undefined {
+    const assetRequestKey = getAssetRequestKey(request);
+    if (!assetRequestKey) {
+      return;
+    }
 
-  readonly pageIcons = {
-    download: async (page: Page) => {
-      await this.setupDirectory();
-      const url = await ensurePageIconDownloaded({
-        page,
+    const asset = this.assetRequestCache.get(assetRequestKey);
+    if (!asset) {
+      return;
+    }
+
+    return this.assetFileCache.get(getAssetKey(asset));
+  }
+
+  async download(args: {
+    request: AssetRequest;
+    cache: NotionObjectIndex;
+    notion: NotionClient;
+  }): Promise<string | undefined> {
+    const assetRequestKey = getAssetRequestKey(args.request);
+    const asset =
+      this.assetRequestCache.get(assetRequestKey) ||
+      (await performAssetRequest(args));
+    if (!asset) {
+      DEBUG_ASSETS('asset request not found: %s', assetRequestKey);
+      return;
+    }
+    this.assetRequestCache.set(assetRequestKey, asset);
+
+    await this.setupDirectory();
+    const assetKey = getAssetKey(asset);
+    const assetFileName =
+      this.assetFileCache.get(assetKey) ||
+      (await ensureAssetInDirectory({
+        asset,
         directory: this.directory,
-      });
-      if (url) {
-        DEBUG_ASSETS('%s: icon stored %s', page.id, url);
-      } else {
-        DEBUG_ASSETS('%s: no icon', page.id);
-      }
-      this.pageIconCache.set(page.id, url);
-      return url;
-    },
-    fromDisk: (page: Page) => this.pageIconCache.get(page.id),
-  };
+      }));
+    if (!assetFileName) {
+      DEBUG_ASSETS('asset not found: %s', assetRequestKey);
+      return;
+    }
+    this.assetFileCache.set(assetKey, assetFileName);
+
+    return assetFileName;
+  }
 }

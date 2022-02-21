@@ -3,9 +3,11 @@ import { Client as NotionClient, Logger, LogLevel } from '@notionhq/client';
 import {
   GetBlockResponse,
   GetPageResponse,
+  GetUserResponse,
   QueryDatabaseParameters,
 } from '@notionhq/client/build/src/api-endpoints';
 import { debug } from 'debug';
+import { NotionObjectIndex } from './cache';
 
 export const DEBUG = debug('@jitl/notion-api');
 
@@ -77,6 +79,13 @@ export type BlockWithChildren = Block & { children: BlockWithChildren[] };
  * forming a recursive tree of blocks.
  */
 export type PageWithChildren = Page & { children: BlockWithChildren[] };
+
+/**
+ * Person or Bot
+ */
+export type User = GetUserResponse;
+export type Person = Extract<User, { type: 'person' }>;
+export type Bot = Extract<User, { type: 'bot' }>;
 
 export type Filter = NonNullable<QueryDatabaseParameters['filter']>;
 export type PropertyFilter = Extract<Filter, { type?: string }>;
@@ -485,41 +494,6 @@ export function buildBacklinks(
     });
   }
   return backlinks;
-}
-
-export class NotionObjectIndex {
-  pages: Map<string, PageWithChildren> = new Map();
-  blocks: Map<string, BlockWithChildren> = new Map();
-  /** Parent block ID, may also be a page ID. */
-  parentId: Map<string, string> = new Map();
-  /** Parent page ID. */
-  parentPageId: Map<string, string | undefined> = new Map();
-
-  addBlock(
-    block: BlockWithChildren,
-    parent: BlockWithChildren | PageWithChildren
-  ) {
-    this.blocks.set(block.id, block);
-    this.parentId.set(block.id, parent.id);
-    this.parentPageId.set(
-      block.id,
-      parent.object === 'page' ? parent.id : this.parentPageId.get(parent.id)
-    );
-  }
-
-  addPage(page: PageWithChildren): void {
-    this.pages.set(page.id, page);
-    switch (page.parent.type) {
-      case 'page_id':
-        this.parentId.set(page.id, page.parent.page_id);
-        this.parentPageId.set(page.id, page.parent.page_id);
-        break;
-      case 'database_id':
-        this.parentId.set(page.id, page.parent.database_id);
-        this.parentPageId.set(page.id, page.parent.database_id);
-        break;
-    }
-  }
 }
 
 /**
