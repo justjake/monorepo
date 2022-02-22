@@ -2,6 +2,8 @@ import {
   AssetRequest,
   BlockWithChildren,
   buildBacklinks,
+  DOWNLOAD_HTTP_ERROR,
+  DOWNLOAD_PERMISSION_ERROR,
   Filter,
   getAssetRequestKey,
   getChildBlocksWithChildrenRecursively,
@@ -29,7 +31,12 @@ import * as fsOld from 'fs';
 import { objectEntries } from '@jitl/util';
 import { QueryDatabaseParameters } from '@notionhq/client/build/src/api-endpoints';
 import { Asset, ensureAssetInDirectory, getAssetKey } from './assets';
-import { NotionObjectIndex } from './cache';
+import {
+  CacheBehavior,
+  fillCache,
+  getFromCache,
+  NotionObjectIndex,
+} from './cache';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
@@ -764,25 +771,49 @@ class AssetCache {
     request: AssetRequest;
     cache: NotionObjectIndex;
     notion: NotionClient;
+    cacheBehavior?: CacheBehavior;
   }): Promise<string | undefined> {
-    const assetRequestKey = getAssetRequestKey(args.request);
-    const asset =
-      this.assetRequestCache.get(assetRequestKey) ||
-      (await performAssetRequest(args));
+    const { cacheBehavior, request } = args;
+    const assetRequestKey = getAssetRequestKey(request);
+    const [asset] = await getFromCache(
+      cacheBehavior,
+      () => this.assetRequestCache.get(assetRequestKey),
+      () => performAssetRequest(args)
+    );
     if (!asset) {
       DEBUG_ASSETS('asset request not found: %s', assetRequestKey);
       return;
     }
-    this.assetRequestCache.set(assetRequestKey, asset);
+    fillCache(cacheBehavior, () =>
+      this.assetRequestCache.set(assetRequestKey, asset)
+    );
 
     await this.setupDirectory();
     const assetKey = getAssetKey(asset);
-    const assetFileName =
-      this.assetFileCache.get(assetKey) ||
-      (await ensureAssetInDirectory({
-        asset,
-        directory: this.directory,
-      }));
+    let assetFileName: string | undefined;
+    try {
+      assetFileName =
+        this.assetFileCache.get(assetKey) ||
+        (await ensureAssetInDirectory({
+          asset,
+          directory: this.directory,
+        }));
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.name === DOWNLOAD_PERMISSION_ERROR &&
+        !args.cacheBehavior
+      ) {
+        DEBUG_ASSETS('asset permission error: %s', assetKey);
+        // Retry the download without caching
+        return this.download({
+          ...args,
+          cacheBehavior: 'refresh',
+        });
+      }
+      throw error;
+    }
+
     if (!assetFileName) {
       DEBUG_ASSETS('asset not found: %s', assetRequestKey);
       return;

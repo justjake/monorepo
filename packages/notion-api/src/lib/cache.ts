@@ -2,7 +2,54 @@ import { AssetRequest, getAssetRequestKey } from '..';
 import { Asset } from './assets';
 import { Block, BlockWithChildren, Page, PageWithChildren } from './notion-api';
 
-export class NotionObjectIndex {
+export type CacheBehavior = 'read-only' | 'fill' | 'refresh';
+
+export function getFromCache<T1, T2>(
+  cacheBehavior: CacheBehavior | undefined,
+  fromCache: () => T1 | undefined,
+  fromScratch: () => Promise<T2>
+): [T1, true] | Promise<[T2, false]> {
+  const cached = cacheBehavior !== 'refresh' ? fromCache() : undefined;
+  if (cached !== undefined) {
+    return [cached, true];
+  }
+
+  return fromScratch().then((value) => [value, false]);
+}
+
+export function fillCache(
+  cacheBehavior: CacheBehavior | undefined,
+  fill: () => void
+) {
+  if (cacheBehavior !== 'read-only') {
+    fill();
+  }
+}
+
+// TODO: continue this idea?
+export interface NotionObjectIndexes {
+  readonly type: CacheBehavior;
+
+  /** Whole pages */
+  page: ReadonlyMap<string, Page>;
+  pageWithChildren: ReadonlyMap<string, PageWithChildren>;
+
+  /** Whole blocks */
+  block: ReadonlyMap<string, Block>;
+  blockWithChildren: ReadonlyMap<string, BlockWithChildren>;
+
+  /** Assets inside a block, page, etc. These are keyed by `getAssetRequestKey`. */
+  asset: ReadonlyMap<string, Asset>;
+
+  /** Parent block ID, may also be a page ID. */
+  parentId: ReadonlyMap<string, string>;
+
+  /** Parent page ID. */
+  parentPageId: ReadonlyMap<string, string | undefined>;
+}
+export class NotionObjectIndex implements NotionObjectIndexes {
+  readonly type = 'fill' as const;
+
   /** Whole pages */
   page: Map<string, Page> = new Map();
   pageWithChildren: Map<string, PageWithChildren> = new Map();
@@ -20,12 +67,21 @@ export class NotionObjectIndex {
   /** Parent page ID. */
   parentPageId: Map<string, string | undefined> = new Map();
 
+  asReadOnly(): NotionObjectIndex {
+    return {
+      ...this,
+      type: 'read-only',
+    };
+  }
+
   addBlock(
-    block: BlockWithChildren,
-    parent: BlockWithChildren | PageWithChildren | string | undefined
+    block: Block | BlockWithChildren,
+    parent: Block | Page | string | undefined
   ) {
     this.block.set(block.id, block);
-    this.blockWithChildren.set(block.id, block);
+    if ('children' in block) {
+      this.blockWithChildren.set(block.id, block);
+    }
 
     const parentId =
       typeof parent === 'string'
@@ -49,9 +105,11 @@ export class NotionObjectIndex {
     }
   }
 
-  addPage(page: PageWithChildren): void {
+  addPage(page: Page | PageWithChildren): void {
     this.page.set(page.id, page);
-    this.pageWithChildren.set(page.id, page);
+    if ('children' in page) {
+      this.pageWithChildren.set(page.id, page);
+    }
     switch (page.parent.type) {
       case 'page_id':
         this.parentId.set(page.id, page.parent.page_id);

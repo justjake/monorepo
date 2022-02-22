@@ -17,7 +17,12 @@ const fsPromises = fs.promises;
 import * as emojiUnicode from 'emoji-unicode';
 import { unreachable } from '@jitl/util';
 import fastSafeStringify from 'fast-safe-stringify';
-import { NotionObjectIndex } from './cache';
+import {
+  CacheBehavior,
+  fillCache,
+  getFromCache,
+  NotionObjectIndex,
+} from './cache';
 
 const DEBUG_ASSET = DEBUG.extend('asset');
 
@@ -79,6 +84,7 @@ type FieldAssetRequest<
 interface AssetHandlerArgs<Request> {
   notion: NotionClient;
   cache: NotionObjectIndex;
+  cacheBehavior?: CacheBehavior;
   request: Request;
 }
 
@@ -95,31 +101,29 @@ type ObjectLookup = {
 };
 
 const ObjectLookup: ObjectLookup = {
-  block: async ({ cache, request, notion }) => {
-    const cached = cache.block.get(request.id);
-    if (cached) {
-      DEBUG_ASSET('lookup block %s: hit', request.id);
-      return cached;
-    }
-
-    const block = await notion.blocks.retrieve({ block_id: request.id });
+  block: async ({ cache, cacheBehavior, request, notion }) => {
+    const [block, hit] = await getFromCache(
+      cacheBehavior,
+      () => cache.block.get(request.id),
+      () => notion.blocks.retrieve({ block_id: request.id })
+    );
+    DEBUG_ASSET('lookup block %s: %s', request.id, hit ? 'hit' : 'miss');
     if ('type' in block) {
-      DEBUG_ASSET('lookup block %s: fetched', request.id);
+      fillCache(cacheBehavior, () => cache.addBlock(block, undefined));
       return block;
     }
     DEBUG_ASSET('lookup block %s: not enough data', request.id);
   },
-  page: async ({ cache, request, notion }) => {
-    const cached = cache.page.get(request.id);
-    if (cached) {
-      DEBUG_ASSET('lookup page %s: hit', request.id);
-      return cached;
-    }
+  page: async ({ cache, cacheBehavior, request, notion }) => {
+    const [page, hit] = await getFromCache(
+      cacheBehavior,
+      () => cache.page.get(request.id),
+      () => notion.pages.retrieve({ page_id: request.id })
+    );
+    DEBUG_ASSET('lookup page %s: %s', request.id, hit ? 'hit' : 'miss');
 
-    const page = await notion.pages.retrieve({ page_id: request.id });
     if ('last_edited_time' in page) {
-      // cache.page.set(request.id, page);
-      DEBUG_ASSET('lookup page %s: fetched', request.id);
+      fillCache(cacheBehavior, () => cache.addPage(page));
       return page;
     }
     DEBUG_ASSET('lookup page %s: not enough data', request.id);
@@ -269,6 +273,9 @@ const EMOJI_DATASOURCE_APPLE_PATH = path.dirname(
   require.resolve('emoji-datasource-apple')
 );
 
+export const DOWNLOAD_PERMISSION_ERROR = 'DownloadPermissionError';
+export const DOWNLOAD_HTTP_ERROR = 'DownloadHTTPError';
+
 /**
  * Download image at `url` to a path in `directory` starting with
  * `filenamePrefix` if it does not exist, or return the existing path on disk
@@ -293,11 +300,43 @@ export async function ensureImageDownloaded(args: {
 
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
+      if (res.statusCode && res.statusCode >= 400 && res.statusCode <= 599) {
+        const permissionError = res.statusCode >= 401 && res.statusCode <= 403;
+        DEBUG_ASSET(
+          'download %s (%d %s): error',
+          url,
+          res.statusCode,
+          res.statusMessage
+        );
+        const error = Object.assign(
+          new Error(
+            `Image download failed: HTTP ${res.statusCode}: ${res.statusMessage}`
+          ),
+          {
+            name: permissionError
+              ? DOWNLOAD_PERMISSION_ERROR
+              : DOWNLOAD_HTTP_ERROR,
+            code: res.statusCode,
+            statusMessage: res.statusMessage,
+            url,
+          }
+        );
+        reject(error);
+        return;
+      }
+
       const ext = mimeTypes.extension(
         res.headers['content-type'] || 'image/png'
       );
       const dest = `${filenamePrefix}.${ext}`;
-      DEBUG_ASSET('download %s --> %s', url, dest);
+      DEBUG_ASSET(
+        'download %s (%d %s) --> %s',
+        url,
+        res.statusCode,
+        res.statusMessage,
+        dest
+      );
+
       const destStream = fs.createWriteStream(path.join(directory, dest));
       res
         .pipe(destStream)

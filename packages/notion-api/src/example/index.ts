@@ -46,4 +46,7 @@ async function main() {
   }
 }
 
-main();
+main().catch((error) => {
+  console.error('Crashed:', error);
+  process.exit(2);
+});
