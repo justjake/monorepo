@@ -18,14 +18,14 @@ function getNotionSecret() {
   return NOTION_SECRET;
 }
 
-const Recipes = new CMS<EmptyObject>({
+const Recipes = new CMS({
   database_id: 'a3aa29a6b2f242d1b4cf86fb578a5eea',
   notion: new NotionClient({
     logger: NotionClientDebugLogger,
-    auth: getNotionSecret(),
+    auth: process.env.NOTION_SECRET,
   }),
-  slug: undefined,
-  visible: true,
+  slug: undefined, // Use page ID
+  visible: true, // All pages visible
   customProperties: {},
   cache: {
     directory: path.join(__dirname, './cache'),
@@ -37,7 +37,7 @@ const Recipes = new CMS<EmptyObject>({
 });
 
 async function main() {
-  // Fetch all data & assets
+  // Download and cache all pages in the Recipes database, and their assets.
   for await (const recipe of Recipes.query()) {
     const s = richTextAsPlainText(recipe.frontmatter.title);
 

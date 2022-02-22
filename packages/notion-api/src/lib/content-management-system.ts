@@ -237,7 +237,7 @@ export interface CMSRetrieveOptions {
  * Each CMS instance wraps a single Notion database that contains [CMSPage]s.
  * @see CMSConfig.
  */
-export class CMS<CustomProperties extends AnyCustomProperties> {
+export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
   /** Indexes links to page */
   public backlinks = new Backlinks();
   /**
