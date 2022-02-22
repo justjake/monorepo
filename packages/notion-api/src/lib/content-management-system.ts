@@ -100,9 +100,7 @@ export type CustomPropertiesConfig<T extends AnyCustomProperties> = {
 };
 
 /**
- * Configuration for the CMS. The CMS needs to know how to generate page URLs,
- * specified by the `slug`, whether to ever consider the page (specified by
- * visible),
+ * Configuration for the CMS.
  *
  * The CMS can also provide whatever extra properties you want.
  * This is helpful for adding well-typed properties to your pages for
@@ -114,7 +112,7 @@ export type CustomPropertiesConfig<T extends AnyCustomProperties> = {
  *
  * @example
  * ```
- * extraProperties: {
+ * customProperties: {
  *   // Require a date property
  *   date: PropertyDataMap['date'],
  *   // Require a subtitle property (as rich text)
