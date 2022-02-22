@@ -281,7 +281,7 @@ export const DOWNLOAD_HTTP_ERROR = 'DownloadHTTPError';
  * `filenamePrefix` if it does not exist, or return the existing path on disk
  * that has that prefix.
  *
- * @returns Promise<string> Image path on disk
+ * @returns Promise<string> Relative path from `directory` to image on disk.
  */
 export async function ensureImageDownloaded(args: {
   url: string;
@@ -295,7 +295,7 @@ export async function ensureImageDownloaded(args: {
   // Found
   if (filename) {
     DEBUG_ASSET('found %s as %s', filenamePrefix, filename);
-    return path.join(directory, filename);
+    return filename;
   }
 
   return new Promise((resolve, reject) => {
@@ -350,6 +350,7 @@ export async function ensureImageDownloaded(args: {
 
 /**
  * Copy an emoji image for `emoji` into `directory`.
+ * @returns relative path from `directory` to the image.
  */
 export async function ensureEmojiCopied(args: {
   emoji: string;
@@ -358,12 +359,13 @@ export async function ensureEmojiCopied(args: {
 }): Promise<string | undefined> {
   const { emoji, directory, filenamePrefix } = args;
   const codepoints = emojiUnicode(emoji).split(' ').join('-');
-  const basename = `${codepoints}.png`;
   const source = path.join(
     EMOJI_DATASOURCE_APPLE_PATH,
     `img/apple/64/${codepoints}.png`
   );
-  const destination = path.join(directory, `${filenamePrefix}.png`);
+
+  const destinationBasename = `${filenamePrefix}.png`;
+  const destination = path.join(directory, destinationBasename);
 
   if (fs.existsSync(destination)) {
     DEBUG_ASSET('found emoji %s as %s', emoji, destination);
@@ -377,12 +379,12 @@ export async function ensureEmojiCopied(args: {
 
   DEBUG_ASSET('copy emoji %s %s --> %s', emoji, source, destination);
   await fsPromises.copyFile(source, destination);
-  return destination;
+  return destinationBasename;
 }
 
 /**
  * Ensure `asset` is present on disk in `directory`.
- * @returns Absolute path to asset on disk, or undefined if not found.
+ * @returns Relative path from `directory` to the asset on disk, or undefined.
  */
 export async function ensureAssetInDirectory(args: {
   asset: Asset;

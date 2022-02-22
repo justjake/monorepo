@@ -1,5 +1,11 @@
 import * as path from 'path';
-import { DEBUG, EmptyObject, NotionClient, NotionClientDebugLogger } from '..';
+import {
+  DEBUG,
+  EmptyObject,
+  NotionClient,
+  NotionClientDebugLogger,
+  richTextAsPlainText,
+} from '..';
 import { CMS } from '../lib/content-management-system';
 
 const DEBUG_EXAMPLE = DEBUG.extend('example');
@@ -20,22 +26,20 @@ const Recipes = new CMS<EmptyObject>({
   }),
   slug: undefined,
   visible: true,
-  extraProperties: undefined,
+  customProperties: {},
   cache: {
     directory: path.join(__dirname, './cache'),
   },
   assets: {
     directory: path.join(__dirname, './assets'),
+    downloadExternalAssets: true,
   },
 });
 
 async function main() {
   // Fetch all data & assets
   for await (const recipe of Recipes.query()) {
-    const s =
-      typeof recipe.frontmatter.title === 'string'
-        ? recipe.frontmatter.title
-        : recipe.frontmatter.title.map((it) => it.plain_text).join('');
+    const s = richTextAsPlainText(recipe.frontmatter.title);
 
     DEBUG_EXAMPLE(
       'recipe "%s" with children %d',

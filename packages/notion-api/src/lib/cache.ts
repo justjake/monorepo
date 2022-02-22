@@ -20,10 +20,30 @@ export function getFromCache<T1, T2>(
 export function fillCache(
   cacheBehavior: CacheBehavior | undefined,
   fill: () => void
+): void;
+export function fillCache(
+  cacheBehavior: CacheBehavior | undefined,
+  hit: boolean,
+  fill: () => void
+): void;
+export function fillCache(
+  cacheBehavior: CacheBehavior | undefined,
+  hitOrFill: boolean | (() => void),
+  maybeFill?: () => void
 ) {
-  if (cacheBehavior !== 'read-only') {
-    fill();
+  const hit = typeof hitOrFill === 'boolean' ? hitOrFill : false;
+  const fill: () => void =
+    typeof maybeFill === 'function' ? maybeFill : (hitOrFill as () => void);
+
+  if (cacheBehavior === 'read-only') {
+    return;
   }
+
+  if (hit && cacheBehavior !== 'refresh') {
+    return;
+  }
+
+  fill();
 }
 
 // TODO: continue this idea?
@@ -78,9 +98,15 @@ export class NotionObjectIndex implements NotionObjectIndexes {
     block: Block | BlockWithChildren,
     parent: Block | Page | string | undefined
   ) {
+    const oldBlockWithChildren = this.blockWithChildren.get(block.id);
     this.block.set(block.id, block);
     if ('children' in block) {
       this.blockWithChildren.set(block.id, block);
+    } else if (oldBlockWithChildren) {
+      // Try to upgrade to a block with children by re-using old children
+      const asBlockWithChildren = block as BlockWithChildren;
+      asBlockWithChildren.children = oldBlockWithChildren.children;
+      this.blockWithChildren.set(block.id, asBlockWithChildren);
     }
 
     const parentId =
@@ -110,6 +136,7 @@ export class NotionObjectIndex implements NotionObjectIndexes {
     if ('children' in page) {
       this.pageWithChildren.set(page.id, page);
     }
+    // Note: we don't try to upgrade `Page` since preserving old children can be more sketchy.
     switch (page.parent.type) {
       case 'page_id':
         this.parentId.set(page.id, page.parent.page_id);

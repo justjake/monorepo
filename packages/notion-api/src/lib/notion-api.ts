@@ -7,12 +7,12 @@ import {
   QueryDatabaseParameters,
 } from '@notionhq/client/build/src/api-endpoints';
 import { debug } from 'debug';
-import { NotionObjectIndex } from './cache';
+import { type } from 'os';
 
 export const DEBUG = debug('@jitl/notion-api');
 
 // API debugging w/ DEBUG=*
-const DEBUG_API = DEBUG.extend('@jitl/notion-api:api');
+const DEBUG_API = DEBUG.extend('api');
 type NotionClientLoggers = { [K in LogLevel]: typeof DEBUG_API };
 const DEBUG_API_LEVEL: { [K in LogLevel]: typeof DEBUG_API } = {
   debug: DEBUG_API.extend('debug'),
@@ -67,6 +67,24 @@ export type RichText = Extract<
  * A single token of rich text.
  */
 export type RichTextToken = RichText[number];
+
+export function richTextAsPlainText(
+  richText: string | RichText | undefined
+): string {
+  if (!richText) {
+    return '';
+  }
+
+  if (typeof richText === 'string') {
+    return richText;
+  }
+
+  return richText
+    .map((token) => {
+      token.plain_text;
+    })
+    .join('');
+}
 
 /**
  * An extension of the Notion API block type that adds a `children` attribute
@@ -346,17 +364,25 @@ export function visitChildBlocks(
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Block data
+////////////////////////////////////////////////////////////////////////////////
+
 export type BlockType = Block['type'];
+
 type BlockTypeMap = {
   [K in BlockType]: Extract<Block, { type: K }>;
 };
+
 export type BlockDataMap = {
   [K in BlockType]: BlockTypeMap[K] extends { [key in K]: unknown }
     ? // @ts-expect-error "Too complex" although, it works?
       BlockTypeMap[K][K]
     : never;
 };
+
 export type BlockData = BlockDataMap[BlockType];
+
 /**
  * Generic way to get a block's data
  */
@@ -367,17 +393,25 @@ export function getBlockData<Type extends BlockType>(
   return (block as any)[block.type];
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Properties
+////////////////////////////////////////////////////////////////////////////////
+
 export type Property = Page['properties'][string];
+
 export type PropertyType = Property['type'];
+
 type PropertyTypeMap = {
   [K in PropertyType]: Extract<Property, { type: K }>;
 };
+
 export type PropertyDataMap = {
   [K in PropertyType]: PropertyTypeMap[K] extends { [key in K]: unknown }
     ? // @ts-expect-error "Too complex" although, it works?
       PropertyTypeMap[K][K]
     : never;
 };
+
 /**
  * Generic way to get a property's data.
  * Suggested usage is with a switch statement on property.type to narrow the
@@ -394,10 +428,61 @@ export type PropertyDataMap = {
  * ```
  */
 export function getPropertyData<Type extends PropertyType>(
-  property: Property & { type: Type }
+  property: Extract<Property, { type: Type }>
 ): PropertyDataMap[Type] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (property as any)[property.type];
+}
+
+/**
+ * A pointer to a property in a Notion API page. The property will by looked up
+ * by `name`, or `id` if given.
+ *
+ * The database property in Notion must have the matching `propertyType` to
+ * match the pointer. Otherwise, it will be the same as a non-existent property..
+ */
+export interface PropertyPointer<Type extends PropertyType> {
+  propertyType: Type;
+  name: string;
+  id?: string;
+}
+
+/**
+ * A pointer to a property in a Notion API page of any property type that has
+ * `T` as the property data.
+ */
+export type PropertyPointerWithOutput<T> = {
+  [P in keyof PropertyDataMap]: PropertyDataMap[P] extends T | null
+    ? PropertyPointer<P>
+    : never;
+}[PropertyType];
+
+export function getProperty(
+  page: Page,
+  { name, id }: Pick<PropertyPointer<any>, 'name' | 'id'>
+): Property | undefined {
+  const property = page.properties[name];
+  if (property && id ? id === property.id : true) {
+    return property;
+  }
+
+  if (id) {
+    return Object.values(page.properties).find(
+      (property) => property.id === id
+    );
+  }
+
+  return undefined;
+}
+
+export function getPropertyWithOutput<T>(
+  page: Page,
+  propertyPointer: PropertyPointerWithOutput<T>
+): T | undefined {
+  const property = getProperty(page, propertyPointer);
+  if (property && property.type === propertyPointer.propertyType) {
+    return (property as any)[propertyPointer.propertyType];
+  }
 }
 
 /** Visit all text tokens in a block or page. Relations are treated as mention tokens. */
