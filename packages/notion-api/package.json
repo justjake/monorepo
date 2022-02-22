@@ -2,11 +2,7 @@
   "name": "@jitl/notion-api",
   "version": "0.0.1",
   "peerDependencies": {
-    "@notionhq/client": "^0.4.13",
-    "@types/react": "^17.0.39",
-    "@types/react-dom": "^17.0.11",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2"
+    "@notionhq/client": "^0.4.13"
   },
   "dependencies": {
     "@jitl/util": "*",

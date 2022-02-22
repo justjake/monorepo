@@ -46,28 +46,7 @@ export function fillCache(
   fill();
 }
 
-// TODO: continue this idea?
-export interface NotionObjectIndexes {
-  readonly type: CacheBehavior;
-
-  /** Whole pages */
-  page: ReadonlyMap<string, Page>;
-  pageWithChildren: ReadonlyMap<string, PageWithChildren>;
-
-  /** Whole blocks */
-  block: ReadonlyMap<string, Block>;
-  blockWithChildren: ReadonlyMap<string, BlockWithChildren>;
-
-  /** Assets inside a block, page, etc. These are keyed by `getAssetRequestKey`. */
-  asset: ReadonlyMap<string, Asset>;
-
-  /** Parent block ID, may also be a page ID. */
-  parentId: ReadonlyMap<string, string>;
-
-  /** Parent page ID. */
-  parentPageId: ReadonlyMap<string, string | undefined>;
-}
-export class NotionObjectIndex implements NotionObjectIndexes {
+export class NotionObjectIndex {
   readonly type = 'fill' as const;
 
   /** Whole pages */

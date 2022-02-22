@@ -287,15 +287,20 @@ export async function ensureImageDownloaded(args: {
   url: string;
   filenamePrefix: string;
   directory: string;
-}): Promise<string> {
-  const { url, filenamePrefix, directory } = args;
+  cacheBehavior?: CacheBehavior;
+}): Promise<string | undefined> {
+  const { url, filenamePrefix, directory, cacheBehavior } = args;
   const files = await fsPromises.readdir(directory);
   const filename = files.find((name) => name.startsWith(filenamePrefix));
 
   // Found
-  if (filename) {
+  if (filename && cacheBehavior !== 'refresh') {
     DEBUG_ASSET('found %s as %s', filenamePrefix, filename);
     return filename;
+  }
+
+  if (cacheBehavior === 'read-only') {
+    return undefined;
   }
 
   return new Promise((resolve, reject) => {
@@ -356,8 +361,9 @@ export async function ensureEmojiCopied(args: {
   emoji: string;
   directory: string;
   filenamePrefix: string;
+  cacheBehavior?: CacheBehavior;
 }): Promise<string | undefined> {
-  const { emoji, directory, filenamePrefix } = args;
+  const { emoji, directory, filenamePrefix, cacheBehavior } = args;
   const codepoints = emojiUnicode(emoji).split(' ').join('-');
   const source = path.join(
     EMOJI_DATASOURCE_APPLE_PATH,
@@ -367,9 +373,13 @@ export async function ensureEmojiCopied(args: {
   const destinationBasename = `${filenamePrefix}.png`;
   const destination = path.join(directory, destinationBasename);
 
-  if (fs.existsSync(destination)) {
+  if (cacheBehavior !== 'refresh' && fs.existsSync(destination)) {
     DEBUG_ASSET('found emoji %s as %s', emoji, destination);
     return destination;
+  }
+
+  if (cacheBehavior === 'read-only') {
+    return undefined;
   }
 
   if (!fs.existsSync(source)) {
@@ -389,8 +399,9 @@ export async function ensureEmojiCopied(args: {
 export async function ensureAssetInDirectory(args: {
   asset: Asset;
   directory: string;
+  cacheBehavior?: CacheBehavior;
 }): Promise<string | undefined> {
-  const { asset, directory } = args;
+  const { asset, directory, cacheBehavior } = args;
   const key = getAssetKey(asset);
 
   if (asset.type === 'file') {
@@ -399,6 +410,7 @@ export async function ensureAssetInDirectory(args: {
       url,
       directory,
       filenamePrefix: key,
+      cacheBehavior,
     });
   }
 
@@ -408,6 +420,7 @@ export async function ensureAssetInDirectory(args: {
       url,
       directory,
       filenamePrefix: key,
+      cacheBehavior,
     });
   }
 
@@ -416,6 +429,7 @@ export async function ensureAssetInDirectory(args: {
       emoji: asset.emoji,
       directory,
       filenamePrefix: key,
+      cacheBehavior,
     });
   }
 

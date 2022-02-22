@@ -1,46 +1,41 @@
-import {
-  AssetRequest,
-  BlockWithChildren,
-  buildBacklinks,
-  DOWNLOAD_HTTP_ERROR,
-  DOWNLOAD_PERMISSION_ERROR,
-  Filter,
-  getAssetRequestKey,
-  getChildBlocksWithChildrenRecursively,
-  iteratePaginatedAPI,
-  performAssetRequest,
-  PropertyPointer,
-  richTextAsPlainText,
-  Sorts,
-  visitChildBlocks,
-} from '..';
-import {
-  NotionClient,
-  PropertyType,
-  PageWithChildren,
-  PropertyDataMap,
-  RichText,
-  EmptyObject,
-  Backlinks,
-  Page,
-  Property,
-  PropertyFilter,
-  Block,
-  DEBUG,
-  PropertyPointerWithOutput,
-  getPropertyWithOutput,
-} from './notion-api';
 import * as path from 'path';
 import * as fsOld from 'fs';
 import { objectEntries } from '@jitl/util';
 import { QueryDatabaseParameters } from '@notionhq/client/build/src/api-endpoints';
-import { Asset, ensureAssetInDirectory, getAssetKey } from './assets';
+import {
+  NotionClient,
+  PageWithChildren,
+  RichText,
+  EmptyObject,
+  Page,
+  PropertyFilter,
+  DEBUG,
+  PropertyPointerWithOutput,
+  getPropertyWithOutput,
+  BlockWithChildren,
+  Filter,
+  getChildBlocksWithChildrenRecursively,
+  iteratePaginatedAPI,
+  richTextAsPlainText,
+  Sorts,
+  visitChildBlocks,
+} from './notion-api';
+import {
+  Asset,
+  AssetRequest,
+  DOWNLOAD_PERMISSION_ERROR,
+  ensureAssetInDirectory,
+  getAssetKey,
+  getAssetRequestKey,
+  performAssetRequest,
+} from './assets';
 import {
   CacheBehavior,
   fillCache,
   getFromCache,
   NotionObjectIndex,
 } from './cache';
+import { Backlinks, buildBacklinks } from './backlinks';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
@@ -835,7 +830,7 @@ class AssetCache {
     return this.config.directory;
   }
 
-  setup = false;
+  private setup = false;
   private async setupDirectory() {
     if (this.setup === false && this.directory) {
       await fs.mkdir(this.directory, { recursive: true });
@@ -843,18 +838,30 @@ class AssetCache {
     }
   }
 
-  fromDisk(request: AssetRequest): string | undefined {
+  async fromCache(request: AssetRequest): Promise<string | undefined> {
     const assetRequestKey = getAssetRequestKey(request);
-    if (!assetRequestKey) {
-      return;
-    }
-
     const asset = this.assetRequestCache.get(assetRequestKey);
     if (!asset) {
       return;
     }
 
-    return this.assetFileCache.get(getAssetKey(asset));
+    const assetKey = getAssetKey(asset);
+    const [path, hit] = await getFromCache(
+      'fill',
+      () => this.assetFileCache.get(assetKey),
+      () =>
+        ensureAssetInDirectory({
+          asset,
+          directory: this.directory,
+          cacheBehavior: 'read-only',
+        })
+    );
+
+    if (path) {
+      fillCache('fill', hit, () => this.assetFileCache.set(assetKey, path));
+    }
+
+    return path;
   }
 
   async download(args: {

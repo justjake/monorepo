@@ -485,8 +485,8 @@ export function getPropertyWithOutput<T>(
   }
 }
 
-/** Visit all text tokens in a block or page. Relations are treated as mention tokens. */
-function visitTextTokens(
+/** Visit all text tokens in a block or page. Relations are treated as mention tokens. Does not consider children. */
+export function visitTextTokens(
   object: Block | Page,
   fn: (token: RichTextToken) => void
 ): void {
@@ -533,52 +533,6 @@ function visitTextTokens(
       blockData.caption.forEach(fn);
     }
   }
-}
-
-export function buildBacklinks(
-  pages: PageWithChildren[],
-  backlinks = new Backlinks()
-): Backlinks {
-  for (const page of pages) {
-    const fromPage: BacklinkFrom = {
-      mentionedFromPageId: page.id,
-      mentionedFromBlockId: page.id,
-    };
-
-    visitTextTokens(page, (token) =>
-      backlinks.maybeAddTextToken(token, fromPage)
-    );
-
-    visitChildBlocks(page.children, (block) => {
-      const fromBlock = {
-        ...fromPage,
-        mentionedFromBlockId: block.id,
-      };
-      visitTextTokens(block, (token) =>
-        backlinks.maybeAddTextToken(token, fromBlock)
-      );
-      switch (block.type) {
-        case 'link_to_page': {
-          backlinks.add({
-            ...fromBlock,
-            mentionedPageId:
-              block.link_to_page.type === 'page_id'
-                ? block.link_to_page.page_id
-                : block.link_to_page.database_id,
-          });
-          break;
-        }
-        case 'bookmark':
-        case 'link_preview':
-        case 'embed': {
-          const blockData = getBlockData(block);
-          backlinks.maybeAddUrl(blockData.url, fromBlock);
-          break;
-        }
-      }
-    });
-  }
-  return backlinks;
 }
 
 /**
