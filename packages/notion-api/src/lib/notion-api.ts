@@ -7,7 +7,10 @@ import {
   QueryDatabaseParameters,
 } from '@notionhq/client/build/src/api-endpoints';
 import { debug } from 'debug';
-import { type } from 'os';
+
+////////////////////////////////////////////////////////////////////////////////
+// Debugging.
+////////////////////////////////////////////////////////////////////////////////
 
 export const DEBUG = debug('@jitl/notion-api');
 
@@ -30,9 +33,19 @@ export const NotionClientDebugLogger: NotionClientDebugLogger = Object.assign(
   DEBUG_API_LEVEL
 );
 
-export { NotionClient };
+export {
+  /**
+   * The official @notionhq/client API Client.
+   */
+  NotionClient,
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// API fundamentals.
+////////////////////////////////////////////////////////////////////////////////
 
 export type EmptyObject = Record<string, never>;
+
 export interface PaginatedList<T> {
   object: 'list';
   results: T[];
@@ -45,76 +58,20 @@ export interface PaginatedArgs {
   page_size?: number;
 }
 
-/**
- * A Notion API page.
- */
-export type Page = Extract<GetPageResponse, { parent: unknown }>;
-
-/**
- * A Notion API block.
- */
-export type Block = Extract<GetBlockResponse, { type: string }>;
-
-/**
- * Notion API rich text. An array of rich text tokens.
- */
-export type RichText = Extract<
-  Block,
-  { type: 'paragraph' }
->['paragraph']['text'];
-
-/**
- * A single token of rich text.
- */
-export type RichTextToken = RichText[number];
-
-export function richTextAsPlainText(
-  richText: string | RichText | undefined
-): string {
-  if (!richText) {
-    return '';
-  }
-
-  if (typeof richText === 'string') {
-    return richText;
-  }
-
-  return richText
-    .map((token) => {
-      token.plain_text;
-    })
-    .join('');
-}
-
-/**
- * An extension of the Notion API block type that adds a `children` attribute
- * forming a recursive tree of blocks.
- */
-export type BlockWithChildren = Block & { children: BlockWithChildren[] };
-
-/**
- * An extension of the Notion API page type that ads a `children` attribute
- * forming a recursive tree of blocks.
- */
-export type PageWithChildren = Page & { children: BlockWithChildren[] };
-
-/**
- * Person or Bot
- */
-export type User = GetUserResponse;
-export type Person = Extract<User, { type: 'person' }>;
-export type Bot = Extract<User, { type: 'bot' }>;
-
-export type Filter = NonNullable<QueryDatabaseParameters['filter']>;
-export type PropertyFilter = Extract<Filter, { type?: string }>;
-export type Sorts = NonNullable<QueryDatabaseParameters['sorts']>;
-
 const DEBUG_ITERATE = DEBUG.extend('iterate');
 
 /**
  * Iterate over all results in a paginated list API.
  * @param listFn API to call
  * @param firstPageArgs These arguments are used for each page, with an updated `start_cursor`.
+ *
+ * ```
+ * for await (const block of iteratePaginatedAPI(notion.blocks.children.list, {
+ *   block_id: parentBlockId,
+ * })) {
+ *   // Do something with block.
+ * }
+ * ```
  */
 export async function* iteratePaginatedAPI<Args extends PaginatedArgs, Item>(
   listFn: (args: Args) => Promise<PaginatedList<Item>>,
@@ -146,6 +103,137 @@ export async function* iteratePaginatedAPI<Args extends PaginatedArgs, Item>(
 }
 
 /**
+ * Gather all an async iterable's items into an array.
+ * ```
+ * const iterator = iteratePaginatedAPI(notion.blocks.children.list, { block_id: parentBlockId });
+ * const blocks = await asyncIterableToArray(iterator);
+ * const paragraphs = blocks.filter(block => isFullBlock(block, 'paragraph'))
+ * ```
+ */
+export async function asyncIterableToArray<T>(
+  iterable: AsyncIterable<T>
+): Promise<Array<T>> {
+  const array = [];
+  for await (const item of iterable) {
+    array.push(item);
+  }
+  return array;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Pages.
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * A full Notion API page.
+ */
+export type Page = Extract<GetPageResponse, { parent: unknown }>;
+
+/**
+ * The Notion API may return a "partial" page object if your API token can't
+ * access the page.
+ *
+ * This function confirms that all page data is available.
+ */
+export function isFullPage(page: GetPageResponse): page is Page {
+  return 'parent' in page;
+}
+
+/**
+ * An extension of the Notion API page type that ads a `children` attribute
+ * forming a recursive tree of blocks.
+ */
+export type PageWithChildren = Page & { children: BlockWithChildren[] };
+
+export function isPageWithChildren(
+  page: GetPageResponse
+): page is PageWithChildren {
+  return isFullPage(page) && 'children' in page;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Blocks.
+////////////////////////////////////////////////////////////////////////////////
+
+type AnyBlock = Extract<GetBlockResponse, { type: string }>;
+
+/**
+ * Type of any block.
+ */
+export type BlockType = AnyBlock['type'];
+
+/**
+ * A full Notion API block.
+ */
+export type Block<BlockType extends AnyBlock['type'] = AnyBlock['type']> =
+  Extract<AnyBlock, { type: BlockType }>;
+
+/**
+ * The Notion API may return a "partial" block object if your API token can't
+ * access the block.
+ *
+ * This function confirms that all block data is available.
+ */
+function isFullBlock(block: GetBlockResponse): block is Block;
+/**
+ * The Notion API may return a "partial" block object if your API token can't
+ * access the block.
+ *
+ * This function confirms that all block data is available, and the block has
+ * type `blockType`.
+ */
+function isFullBlock<Type extends BlockType>(
+  block: GetBlockResponse,
+  blockType: Type
+): block is Block<Type>;
+function isFullBlock<Type extends BlockType>(
+  block: GetBlockResponse,
+  type?: Type
+): block is Block<Type> {
+  return 'type' in block && type ? block.type === type : true;
+}
+
+type BlockTypeMap = {
+  [K in BlockType]: Block<K>;
+};
+
+export type BlockDataMap = {
+  [K in BlockType]: BlockTypeMap[K] extends { [key in K]: unknown }
+    ? // @ts-expect-error "Too complex" although, it works?
+      BlockTypeMap[K][K]
+    : never;
+};
+
+export type AnyBlockData = BlockDataMap[BlockType];
+
+/**
+ * Generic way to get a block's data.
+ */
+export function getBlockData<Type extends BlockType>(
+  block: Block<Type>
+): BlockDataMap[Type] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (block as any)[block.type];
+}
+
+/**
+ * An extension of the Notion API block type that adds a `children` attribute
+ * forming a recursive tree of blocks.
+ */
+export type BlockWithChildren<Type extends BlockType = BlockType> =
+  Block<Type> & { children: BlockWithChildren[] };
+
+export function isBlockWithChildren(
+  block: GetBlockResponse
+): block is BlockWithChildren {
+  return isFullBlock(block) && 'children' in block;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Block children.
+////////////////////////////////////////////////////////////////////////////////
+
+/**
  * Fetch all supported children of a block.
  */
 export async function getChildBlocks(
@@ -165,14 +253,11 @@ export async function getChildBlocks(
   return blocks;
 }
 
-function isFullBlock(block: GetBlockResponse): block is Block {
-  return 'type' in block;
-}
-
 const DEBUG_CHILDREN = DEBUG.extend('children');
 
 /**
  * Recursively fetch all children of `parentBlockId` as `BlockWithChildren`.
+ * This function can be used to fetch an entire page's contents in one call.
  */
 export async function getChildBlocksWithChildrenRecursively(
   notion: NotionClient,
@@ -241,127 +326,90 @@ export function visitChildBlocks(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Block data
+// Rich text.
 ////////////////////////////////////////////////////////////////////////////////
 
-export type BlockType = Block['type'];
-
-type BlockTypeMap = {
-  [K in BlockType]: Extract<Block, { type: K }>;
-};
-
-export type BlockDataMap = {
-  [K in BlockType]: BlockTypeMap[K] extends { [key in K]: unknown }
-    ? // @ts-expect-error "Too complex" although, it works?
-      BlockTypeMap[K][K]
-    : never;
-};
-
-export type BlockData = BlockDataMap[BlockType];
+/**
+ * Notion API rich text. An array of rich text tokens.
+ */
+export type RichText = Extract<
+  Block,
+  { type: 'paragraph' }
+>['paragraph']['text'];
 
 /**
- * Generic way to get a block's data
+ * A single token of rich text.
  */
-export function getBlockData<Type extends BlockType>(
-  block: Block & { type: Type }
-): BlockDataMap[Type] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (block as any)[block.type];
-}
+export type RichTextToken = RichText[number];
 
-////////////////////////////////////////////////////////////////////////////////
-// Properties
-////////////////////////////////////////////////////////////////////////////////
+type AnyMention = Extract<RichTextToken, { type: 'mention' }>;
+export type MentionType = AnyMention['mention']['type'];
 
-export type Property = Page['properties'][string];
-
-export type PropertyType = Property['type'];
-
-type PropertyTypeMap = {
-  [K in PropertyType]: Extract<Property, { type: K }>;
-};
-
-export type PropertyDataMap = {
-  [K in PropertyType]: PropertyTypeMap[K] extends { [key in K]: unknown }
-    ? // @ts-expect-error "Too complex" although, it works?
-      PropertyTypeMap[K][K]
-    : never;
-};
+export type MentionData<Type extends MentionType> = Extract<
+  AnyMention['mention'],
+  { type: Type }
+>;
 
 /**
- * Generic way to get a property's data.
- * Suggested usage is with a switch statement on property.type to narrow the
- * result.
- *
- * ```
- * switch (prop.type) {
- *   case 'title':
- *   case 'rich_text':
- *     getPropertyData(prop).forEach((token) => fn(token));
- *     break;
- *   // ...
- * }
- * ```
+ * A mention token.
+ * (This type doesn't seem to work very well.)
  */
-export function getPropertyData<Type extends PropertyType>(
-  property: Extract<Property, { type: Type }>
-): PropertyDataMap[Type] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (property as any)[property.type];
-}
+export type Mention<Type extends MentionType = MentionType> = Omit<
+  AnyMention,
+  'mention'
+> & { mention: MentionData<Type> };
 
 /**
- * A pointer to a property in a Notion API page. The property will by looked up
- * by `name`, or `id` if given.
- *
- * The database property in Notion must have the matching `propertyType` to
- * match the pointer. Otherwise, it will be the same as a non-existent property..
+ * @returns Plaintext string of rich text.
  */
-export interface PropertyPointer<Type extends PropertyType> {
-  propertyType: Type;
-  name: string;
-  id?: string;
-}
-
-/**
- * A pointer to a property in a Notion API page of any property type that has
- * `T` as the property data.
- */
-export type PropertyPointerWithOutput<T> = {
-  [P in keyof PropertyDataMap]: PropertyDataMap[P] extends T | null
-    ? PropertyPointer<P>
-    : never;
-}[PropertyType];
-
-export function getProperty(
-  page: Page,
-  { name, id }: Pick<PropertyPointer<any>, 'name' | 'id'>
-): Property | undefined {
-  const property = page.properties[name];
-  if (property && id ? id === property.id : true) {
-    return property;
+export function richTextAsPlainText(
+  richText: string | RichText | undefined
+): string {
+  if (!richText) {
+    return '';
   }
 
-  if (id) {
-    return Object.values(page.properties).find(
-      (property) => property.id === id
-    );
+  if (typeof richText === 'string') {
+    return richText;
   }
 
-  return undefined;
+  return richText
+    .map((token) => {
+      token.plain_text;
+    })
+    .join('');
 }
 
-export function getPropertyWithOutput<T>(
-  page: Page,
-  propertyPointer: PropertyPointerWithOutput<T>
-): T | undefined {
-  const property = getProperty(page, propertyPointer);
-  if (property && property.type === propertyPointer.propertyType) {
-    return (property as any)[propertyPointer.propertyType];
+type DateMentionData = MentionData<'date'>;
+
+/**
+ * Notion date type.
+ */
+export type DateResponse = DateMentionData['date'];
+
+export function notionDateStartAsDate(date: DateResponse | Date): Date;
+export function notionDateStartAsDate(
+  date: DateResponse | Date | undefined
+): Date | undefined;
+export function notionDateStartAsDate(
+  date: DateResponse | Date | undefined
+): Date | undefined {
+  if (!date) {
+    return undefined;
   }
+
+  if (date instanceof Date) {
+    return date;
+  }
+
+  const start = date.start;
+  return new Date(start);
 }
 
-/** Visit all text tokens in a block or page. Relations are treated as mention tokens. Does not consider children. */
+/**
+ * Visit all text tokens in a block or page. Relations are treated as mention
+ * tokens. Does not consider children.
+ */
 export function visitTextTokens(
   object: Block | Page,
   fn: (token: RichTextToken) => void
@@ -407,6 +455,173 @@ export function visitTextTokens(
 
     if ('caption' in blockData) {
       blockData.caption.forEach(fn);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Users.
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Person or Bot
+ */
+export type User = GetUserResponse;
+
+/**
+ * Person
+ */
+export type Person = Extract<User, { type: 'person' }>;
+
+/**
+ * Bot
+ */
+export type Bot = Extract<User, { type: 'bot' }>;
+
+////////////////////////////////////////////////////////////////////////////////
+// Database queries.
+////////////////////////////////////////////////////////////////////////////////
+
+export type Filter = NonNullable<QueryDatabaseParameters['filter']>;
+export type PropertyFilter = Extract<Filter, { type?: string }>;
+export type CompoundFilter = Exclude<Filter, PropertyFilter>;
+export type Sorts = NonNullable<QueryDatabaseParameters['sorts']>;
+export type Sort = Sorts[number];
+
+////////////////////////////////////////////////////////////////////////////////
+// Properties
+////////////////////////////////////////////////////////////////////////////////
+
+type AnyProperty = Page['properties'][string];
+
+export type PropertyType = AnyProperty['type'];
+
+/**
+ * A property of a Notion page.
+ */
+export type Property<Type extends PropertyType = PropertyType> = Extract<
+  AnyProperty,
+  { type: Type }
+>;
+
+type PropertyTypeMap = {
+  [K in PropertyType]: Property<K>;
+};
+
+export type PropertyDataMap = {
+  [K in PropertyType]: PropertyTypeMap[K] extends { [key in K]: unknown }
+    ? // @ts-expect-error "Too complex" although, it works?
+      PropertyTypeMap[K][K]
+    : never;
+};
+
+/**
+ * Generic way to get a property's data.
+ * Suggested usage is with a switch statement on property.type to narrow the
+ * result.
+ *
+ * ```
+ * switch (prop.type) {
+ *   case 'title':
+ *   case 'rich_text':
+ *     getPropertyData(prop).forEach((token) => fn(token));
+ *     break;
+ *   // ...
+ * }
+ * ```
+ */
+export function getPropertyData<Type extends PropertyType>(
+  property: Property<Type>
+): PropertyDataMap[Type] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (property as any)[property.type];
+}
+
+/**
+ * A pointer to a property in a Notion API page. The property will by looked up
+ * by `name`, or `id` if given.
+ *
+ * The database property in Notion must have the matching `propertyType` to
+ * match the pointer. Otherwise, it will be the same as a non-existent property..
+ */
+export interface PropertyPointer<Type extends PropertyType = PropertyType> {
+  type: Type;
+  name: string;
+  id?: string;
+}
+
+/**
+ * A pointer to a property in a Notion API page of any property type that has
+ * `T` as the property data.
+ */
+export type PropertyPointerWithOutput<T> = {
+  [P in keyof PropertyDataMap]: PropertyDataMap[P] extends T | null
+    ? PropertyPointer<P>
+    : never;
+}[PropertyType];
+
+export function getProperty(
+  page: Page,
+  { name, id }: Pick<PropertyPointer, 'name' | 'id'>
+): Property | undefined {
+  const property = page.properties[name];
+  if (property && id ? id === property.id : true) {
+    return property;
+  }
+
+  if (id) {
+    return Object.values(page.properties).find(
+      (property) => property.id === id
+    );
+  }
+
+  return undefined;
+}
+
+/**
+ * Get the value of property `propertyPointer` in `page`.
+ * @returns The value of the property, or `undefined` if the property isn't found, or has a different type.
+ */
+export function getPropertyValue<Type extends PropertyType>(
+  page: Page,
+  propertyPointer: PropertyPointer<Type>
+): PropertyDataMap[Type] | undefined;
+/**
+ * Get the value of property `propertyPointer` in `page`, transformed by `transform`.
+ * @returns The result of `as(propertyValue)`, or `undefined` if the property isn't found or has a different type.
+ */
+export function getPropertyValue<Type extends PropertyType, T>(
+  page: Page,
+  propertyPointer: PropertyPointer<Type>,
+  transform: (propertyValue: PropertyDataMap[Type]) => T
+): T | undefined;
+/**
+ * Get the value of property `propertyPointer` in `page`.
+ * @returns The value of the property, or `undefined` if the property isn't found, or has a different type.
+ */
+export function getPropertyValue<T>(
+  page: Page,
+  propertyPointer: PropertyPointerWithOutput<T>
+): T | undefined;
+/**
+ * Get the value of property `propertyPointer` in `page`, transformed by `transform`.
+ * @returns The result of `as(propertyValue)`, or `undefined` if the property isn't found or has a different type.
+ */
+export function getPropertyValue<P, T>(
+  page: Page,
+  propertyPointer: PropertyPointerWithOutput<P>,
+  transform: (propertyValue: P) => T
+): T | undefined;
+export function getPropertyValue<P, T>(
+  page: Page,
+  propertyPointer: PropertyPointerWithOutput<P>,
+  transform?: (propertyValue: P) => T
+): T | undefined {
+  const property = getProperty(page, propertyPointer);
+  if (property && property.type === propertyPointer.type) {
+    const propertyValue = (property as any)[propertyPointer.type];
+    if (propertyValue !== undefined) {
+      return transform ? transform(propertyValue) : propertyValue;
     }
   }
 }

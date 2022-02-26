@@ -1,17 +1,17 @@
+/* eslint-disable @typescript-eslint/ban-types */
 import * as path from 'path';
 import * as fsOld from 'fs';
-import { objectEntries } from '@jitl/util';
+import { unreachable } from '@jitl/util';
 import { QueryDatabaseParameters } from '@notionhq/client/build/src/api-endpoints';
 import {
   NotionClient,
   PageWithChildren,
   RichText,
-  EmptyObject,
   Page,
   PropertyFilter,
   DEBUG,
   PropertyPointerWithOutput,
-  getPropertyWithOutput,
+  getPropertyValue,
   BlockWithChildren,
   Filter,
   getChildBlocksWithChildrenRecursively,
@@ -36,92 +36,64 @@ import {
   NotionObjectIndex,
 } from './cache';
 import { Backlinks, buildBacklinks } from './backlinks';
+import { isFullPage, notionDateStartAsDate } from '..';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
-
-type AnyCustomProperties = Record<string, unknown>;
 
 /**
  * Specifies that the CMS should look up a custom property from regular Page property.
  * Consider using this with a formula property for maximum flexibility.
  */
-export interface CustomPropertyPointer<T> {
+export type CMSCustomPropertyPointer<T> = {
   type: 'property';
   property: PropertyPointerWithOutput<T>;
-}
+};
 
 /**
  * Specifies that the CMS should compute a value for the page using a function.
  */
-export interface CustomPropertyDerived<
-  T,
-  ExtraProperties extends AnyCustomProperties
-> {
+export interface CMSCustomPropertyDerived<T, CustomFrontmatter> {
   type: 'derived';
-  derive: (
-    page: Page,
-    cms: CMS<ExtraProperties>,
-    /** Partially computed extra properties. Properties are computed in the order they are defined. */
-    extraProperties: Partial<ExtraProperties>
-  ) => T | Promise<T>;
-}
-
-/**
- * Specifies that the CMS should compute a value for the page using a function
- * after fetching the page's children.
- */
-export interface CustomPropertyDerivedFromChildren<
-  T,
-  ExtraProperties extends AnyCustomProperties
-> {
-  type: 'derived-from-children';
-  derive: (
-    page: PageWithChildren,
-    cms: CMS<ExtraProperties>,
-    /** Partially computed extra properties. Properties are computed in the order they are defined. */
-    extraProperties: Partial<ExtraProperties>
-  ) => T | Promise<T>;
+  derive: (page: Page, cms: CMS<CustomFrontmatter>) => T | Promise<T>;
 }
 
 /**
  * Specifies how a CMS should get a custom property.
  */
-export type CustomProperty<T, ExtraProperties extends AnyCustomProperties> =
-  | CustomPropertyPointer<T>
-  | CustomPropertyDerived<T, ExtraProperties>
-  | CustomPropertyDerivedFromChildren<T, ExtraProperties>;
-
-/**
- * Specifies all the custom properties the CMS should compute for a page.
- */
-export type CustomPropertiesConfig<T extends AnyCustomProperties> = {
-  [K in keyof T]: CustomProperty<T[K], T>;
-};
+export type CMSCustomProperty<T, CustomFrontmatter> =
+  | CMSCustomPropertyPointer<T>
+  | CMSCustomPropertyDerived<T, CustomFrontmatter>;
 
 /**
  * Configuration for the CMS.
  *
- * The CMS can also provide whatever extra properties you want.
- * This is helpful for adding well-typed properties to your pages for
- * rendering, since the Notion API doesn't guarantee that any property exists,
- * and fetching property data can be quite verbose.
- *
+ * The CMS can compute whatever frontmatter you want from the pages it loads.
  * If you're coming from a Markdown static site generator, think of this as the
  * alternative to YAML frontmatter.
  *
- * @example
+ * This is helpful for adding well-typed properties to your pages for rendering,
+ * since the Notion API doesn't guarantee that any property exists, and fetching
+ * property data can be quite verbose.
+ *
  * ```
- * customProperties: {
- *   // Require a date property
- *   date: PropertyDataMap['date'],
- *   // Require a subtitle property (as rich text)
- *   subtitle: PropertyDataMap['rich_text'],
- * }
+ * getFrontmatter: (page) => ({
+ *   date: getPropertyValue(page, {
+ *     name: 'Date',
+ *     type: 'date',
+ *   }),
+ *   subtitle: getPropertyValue(
+ *     page,
+ *     {
+ *       name: 'Subtitle',
+ *       type: 'rich_text',
+ *     },
+ *     richTextAsPlainText
+ *   ),
+ * }),
+ * ```
  */
-export interface CMSConfig<
-  CustomProperties extends Record<string, any> = EmptyObject
-> {
+export interface CMSConfig<CustomFrontmatter = {}> {
   /** Notion API client */
   notion: NotionClient;
 
@@ -139,8 +111,7 @@ export interface CMSConfig<
    * find a page by a slug.
    */
   slug:
-    | CustomPropertyPointer<RichText | string | undefined>
-    | CustomPropertyDerived<RichText | string | undefined, CustomProperties>
+    | CMSCustomProperty<RichText | string | undefined, CustomFrontmatter>
     | undefined;
 
   /**
@@ -151,20 +122,22 @@ export interface CMSConfig<
    * If you want to hide pages until a publish date, consider using a Notion
    * formula property.
    */
-  visible:
-    | boolean
-    | CustomPropertyPointer<boolean>
-    | CustomPropertyDerived<boolean, CustomProperties>;
+  visible: boolean | CMSCustomProperty<boolean, CustomFrontmatter>;
 
   /**
    * Override the page title in frontmatter.
    */
-  title?: CustomProperty<RichText | string, CustomProperties>;
+  title?: CMSCustomProperty<RichText | string, CustomFrontmatter>;
 
   /**
-   * A map from extra property name to how to derive that custom property.
+   * Function to derive custom frontmatter from a page. Use this function to
+   * read properties from the page and return them in a well-typed way.
    */
-  customProperties: CustomPropertiesConfig<CustomProperties>;
+  getFrontmatter: (
+    page: PageWithChildren,
+    cms: CMS<CustomFrontmatter>,
+    defaultFrontmatter: CMSDefaultFrontmatter
+  ) => CustomFrontmatter | Promise<CustomFrontmatter>;
 
   /**
    * Controls how CMS will cache API data.
@@ -211,19 +184,33 @@ export interface CMSConfig<
   };
 }
 
-export type CMSFrontmatter<ExtraProperties> = {
+interface CMSDefaultFrontmatter {
   title: RichText | string;
   slug: string;
   visible: boolean;
-} & Omit<ExtraProperties, 'slug' | 'visible' | 'title'>;
+}
+
+export type CMSFrontmatter<CustomFrontmatter> = CMSDefaultFrontmatter &
+  Omit<CustomFrontmatter, keyof CMSDefaultFrontmatter>;
 
 /**
- * A CMSPage is a Notion page and its computed CMS properties.
+ * A CMSPage is a Notion page and its computed CMS frontmatter.
  */
-export interface CMSPage<ExtraProperties> {
-  frontmatter: CMSFrontmatter<ExtraProperties>;
+export interface CMSPage<CustomFrontmatter> {
+  frontmatter: CMSFrontmatter<CustomFrontmatter>;
   content: PageWithChildren;
 }
+
+/**
+ * Get the CMSPage type from a CMS.
+ * @example
+ * ```
+ * type MyPage = CMSPageOf<typeof MyCMS>;
+ * ```
+ */
+export type CMSPageOf<T extends CMS> = T extends CMS<infer Props>
+  ? CMSPage<Props>
+  : never;
 
 export interface CMSRetrieveOptions {
   /** If true, ignore the `visible` property of any retrieved [CMSPage]s by always considering them visible. */
@@ -235,7 +222,7 @@ export interface CMSRetrieveOptions {
  * Each CMS instance wraps a single Notion database that contains [CMSPage]s.
  * @see CMSConfig.
  */
-export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
+export class CMS<CustomFrontmatter = {}> {
   /** Indexes links to page */
   public backlinks = new Backlinks();
   /**
@@ -243,170 +230,18 @@ export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
    */
   public notionObjects = new NotionObjectIndex();
   /** Maps from Page ID to CMSPage */
-  public pages = new Map<string, CMSPage<CustomProperties>>();
+  public pages = new Map<string, CMSPage<CustomFrontmatter>>();
   /** Asset downloader, requires `assets` configuration */
   public assets = this.config.assets && new AssetCache(this.config.assets);
   /** Private for now, because the semantics may change. */
   private pageContentCache = new PageContentCache(this.config.cache);
 
-  constructor(public config: CMSConfig<CustomProperties>) {}
-
-  private async buildCMSPage(args: {
-    page: Page;
-    slug?: string;
-    visible?: boolean;
-    children: BlockWithChildren[];
-  }): Promise<CMSPage<CustomProperties>> {
-    const { page, children: content } = args;
-    const pageWithChildren: PageWithChildren = {
-      ...page,
-      children: content,
-    };
-
-    const [slug, visible, title] = await Promise.all([
-      args.slug ?? this.getSlug(pageWithChildren),
-      args.visible ?? this.getVisible(pageWithChildren),
-      this.getTitle(pageWithChildren),
-    ]);
-
-    const partialCustomProperties: Partial<CustomProperties> = {};
-    if (this.config.customProperties) {
-      for (const [key, customProperty] of objectEntries(
-        this.config.customProperties
-      )) {
-        partialCustomProperties[key] = await getCustomProperty(
-          customProperty,
-          pageWithChildren,
-          this,
-          partialCustomProperties
-        );
-      }
-    }
-
-    return {
-      content: pageWithChildren,
-      frontmatter: {
-        ...(partialCustomProperties as CustomProperties),
-        slug,
-        visible,
-        title,
-      },
-    };
-  }
-
-  private async getTitle(page: PageWithChildren): Promise<RichText | string> {
-    if (this.config.title) {
-      const customTitle = await getCustomProperty(
-        this.config.title,
-        page,
-        this,
-        {}
-      );
-      if (customTitle !== undefined) {
-        return customTitle;
-      }
-    }
-    return getPageTitle(page);
-  }
-
-  private async getVisible(page: Page | PageWithChildren): Promise<boolean> {
-    if (typeof this.config.visible === 'boolean') {
-      return this.config.visible;
-    }
-
-    const customVisible = await getCustomProperty(
-      this.config.visible,
-      page,
-      this,
-      {}
-    );
-
-    return Boolean(customVisible);
-  }
-
-  private async getSlug(page: Page | PageWithChildren): Promise<string> {
-    if (this.config.slug) {
-      const customSlug = await getCustomProperty(
-        this.config.slug,
-        page,
-        this,
-        {}
-      );
-      return richTextAsPlainText(customSlug) || defaultSlug(page);
-    }
-    return defaultSlug(page);
-  }
-
-  private rebuildIndexes(cmsPage: CMSPage<CustomProperties>) {
-    // Delete outdated data
-    this.backlinks.deleteBacklinksFromPage(cmsPage.content.id);
-
-    // Rebuild backlinks
-    buildBacklinks([cmsPage.content], this.backlinks);
-
-    // Refresh object cache
-    this.notionObjects.addPage(cmsPage.content);
-    visitChildBlocks(cmsPage.content.children, (block) =>
-      this.notionObjects.addBlock(block, undefined)
-    );
-  }
-
-  public getVisibleFilter(): PropertyFilter | undefined {
-    if (
-      typeof this.config.visible === 'object' &&
-      this.config.visible.type === 'property'
-    ) {
-      const { id, name, propertyType } = this.config.visible.property;
-      const propertyTypeAsCheckbox = propertyType as 'checkbox';
-      const filter: PropertyFilter = {
-        type: propertyTypeAsCheckbox,
-        [propertyTypeAsCheckbox]: {
-          equals: true,
-        },
-        property: id || name,
-      };
-      return filter;
-    }
-  }
-
-  public getSlugFilter(slug: string): PropertyFilter | undefined {
-    if (this.config.slug && this.config.slug.type === 'property') {
-      const { id, name, propertyType } = this.config.slug.property;
-      const propertyTypeAsRichText = propertyType as 'rich_text';
-      const filter: PropertyFilter = {
-        type: propertyTypeAsRichText,
-        property: id || name,
-        [propertyTypeAsRichText]: {
-          equals: slug,
-        },
-      };
-      return filter;
-    }
-  }
-
-  public getDefaultQuery(): QueryDatabaseParameters {
-    const base = this.getBaseQuery();
-    const visible = this.getVisibleFilter();
-    base.filter = visible;
-    return base;
-  }
-
-  private getBaseQuery(): QueryDatabaseParameters {
-    return {
-      database_id: this.config.database_id,
-      sorts: [
-        {
-          timestamp: 'created_time',
-          direction: 'descending',
-        },
-      ],
-    };
-  }
+  constructor(public config: CMSConfig<CustomFrontmatter>) {}
 
   async loadPageById(
     pageId: string,
     options: CMSRetrieveOptions = {}
-  ): Promise<CMSPage<CustomProperties> | undefined> {
+  ): Promise<CMSPage<CustomFrontmatter> | undefined> {
     const cached = await this.pageContentCache.getPageContent(
       this.config.notion,
       pageId
@@ -416,18 +251,15 @@ export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
       cached.page ||
       (await this.config.notion.pages.retrieve({ page_id: pageId }));
 
-    if (!('parent' in page)) {
+    if (!isFullPage(page)) {
       return undefined;
     }
 
     const cmsPage = await this.buildCMSPage({
       children: cached.children,
       page,
+      reIndexChildren: !cached.hit,
     });
-
-    if (!cached.hit) {
-      this.rebuildIndexes(cmsPage);
-    }
 
     const visible = options.showInvisible || cmsPage.frontmatter.visible;
     if (!visible) {
@@ -440,7 +272,7 @@ export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
   async loadPageBySlug(
     slug: string,
     options: CMSRetrieveOptions = {}
-  ): Promise<CMSPage<CustomProperties> | undefined> {
+  ): Promise<CMSPage<CustomFrontmatter> | undefined> {
     // Optimization - the default slug is just the page ID (without dashes),
     // so we can just load by ID.
     if (this.config.slug === undefined) {
@@ -474,7 +306,7 @@ export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
       this.config.notion.databases.query,
       query
     )) {
-      if ('parent' in page) {
+      if (isFullPage(page)) {
         const pageSlug = await this.getSlug(page);
 
         if (pageSlug === slug) {
@@ -494,11 +326,8 @@ export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
             children: cached.children,
             slug,
             page,
+            reIndexChildren: !cached.hit,
           });
-
-          if (!cached.hit) {
-            this.rebuildIndexes(cmsPage);
-          }
 
           return cmsPage;
         }
@@ -512,7 +341,7 @@ export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
       sorts?: Sorts;
     } = {},
     options: CMSRetrieveOptions = {}
-  ): AsyncIterableIterator<CMSPage<CustomProperties>> {
+  ): AsyncIterableIterator<CMSPage<CustomFrontmatter>> {
     const query = this.getDefaultQuery();
     Object.assign(query, args);
 
@@ -520,14 +349,12 @@ export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
       this.config.notion.databases.query,
       query
     )) {
-      if ('parent' in page) {
+      if (isFullPage(page)) {
         const visible = options.showInvisible || (await this.getVisible(page));
         if (!visible) {
           continue;
         }
 
-        // TODO: we should change the API so that we don't need children to
-        // compute custom properties.
         const cached = await this.pageContentCache.getPageContent(
           this.config.notion,
           page
@@ -536,18 +363,15 @@ export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
         const cmsPage = await this.buildCMSPage({
           children: cached.children,
           page,
+          reIndexChildren: !cached.hit,
         });
-
-        if (!cached.hit) {
-          this.rebuildIndexes(cmsPage);
-        }
 
         yield cmsPage;
       }
     }
   }
 
-  async downloadAssets(cmsPage: CMSPage<CustomProperties>): Promise<void> {
+  async downloadAssets(cmsPage: CMSPage<CustomFrontmatter>): Promise<void> {
     const assetCache = this.assets;
     if (!assetCache) {
       return;
@@ -596,6 +420,159 @@ export class CMS<CustomProperties extends AnyCustomProperties = EmptyObject> {
       )
     );
   }
+
+  public getVisibleFilter(): PropertyFilter | undefined {
+    if (
+      typeof this.config.visible === 'object' &&
+      this.config.visible.type === 'property'
+    ) {
+      const { id, name, type: propertyType } = this.config.visible.property;
+      const propertyTypeAsCheckbox = propertyType as 'checkbox';
+      const filter: PropertyFilter = {
+        type: propertyTypeAsCheckbox,
+        [propertyTypeAsCheckbox]: {
+          equals: true,
+        },
+        property: id || name,
+      };
+      return filter;
+    }
+  }
+
+  public getSlugFilter(slug: string): PropertyFilter | undefined {
+    if (this.config.slug && this.config.slug.type === 'property') {
+      const { id, name, type: propertyType } = this.config.slug.property;
+      const propertyTypeAsRichText = propertyType as 'rich_text';
+      const filter: PropertyFilter = {
+        type: propertyTypeAsRichText,
+        property: id || name,
+        [propertyTypeAsRichText]: {
+          equals: slug,
+        },
+      };
+      return filter;
+    }
+  }
+
+  public getDefaultQuery(): QueryDatabaseParameters {
+    const base = this.getBaseQuery();
+    const visible = this.getVisibleFilter();
+    base.filter = visible;
+    return base;
+  }
+
+  private async buildCMSPage(args: {
+    page: Page;
+    slug?: string;
+    visible?: boolean;
+    children: BlockWithChildren[];
+    reIndexChildren: boolean;
+  }): Promise<CMSPage<CustomFrontmatter>> {
+    const { page, children: content, reIndexChildren } = args;
+    const pageWithChildren: PageWithChildren = {
+      ...page,
+      children: content,
+    };
+
+    this.rebuildIndexes(pageWithChildren, reIndexChildren);
+
+    const [slug, visible, title] = await Promise.all([
+      args.slug ?? this.getSlug(pageWithChildren),
+      args.visible ?? this.getVisible(pageWithChildren),
+      this.getTitle(pageWithChildren),
+    ]);
+
+    const defaultFrontmatter: CMSDefaultFrontmatter = {
+      slug,
+      title,
+      visible,
+    };
+
+    const frontmatter = await this.config.getFrontmatter(
+      pageWithChildren,
+      this,
+      defaultFrontmatter
+    );
+
+    return {
+      content: pageWithChildren,
+      frontmatter: {
+        ...frontmatter,
+        slug,
+        visible,
+        title,
+      },
+    };
+  }
+
+  private async getTitle(page: PageWithChildren): Promise<RichText | string> {
+    if (this.config.title) {
+      const customTitle = await getCustomPropertyValue(
+        this.config.title,
+        page,
+        this
+      );
+      if (customTitle !== undefined) {
+        return customTitle;
+      }
+    }
+    return getPageTitle(page);
+  }
+
+  private async getVisible(page: Page | PageWithChildren): Promise<boolean> {
+    if (typeof this.config.visible === 'boolean') {
+      return this.config.visible;
+    }
+
+    const customVisible = await getCustomPropertyValue(
+      this.config.visible,
+      page,
+      this
+    );
+
+    return Boolean(customVisible);
+  }
+
+  private async getSlug(page: Page | PageWithChildren): Promise<string> {
+    if (this.config.slug) {
+      const customSlug = await getCustomPropertyValue(
+        this.config.slug,
+        page,
+        this
+      );
+      return richTextAsPlainText(customSlug) || defaultSlug(page);
+    }
+    return defaultSlug(page);
+  }
+
+  private rebuildIndexes(page: PageWithChildren, reIndexChildren: boolean) {
+    this.notionObjects.addPage(page);
+
+    if (reIndexChildren) {
+      // Delete outdated data
+      this.backlinks.deleteBacklinksFromPage(page.id);
+
+      // Rebuild backlinks
+      buildBacklinks([page], this.backlinks);
+
+      // Refresh object cache
+      visitChildBlocks(page.children, (block) =>
+        this.notionObjects.addBlock(block, undefined)
+      );
+    }
+  }
+
+  private getBaseQuery(): QueryDatabaseParameters {
+    return {
+      database_id: this.config.database_id,
+      sorts: [
+        {
+          timestamp: 'created_time',
+          direction: 'descending',
+        },
+      ],
+    };
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -616,28 +593,18 @@ export function getPageTitle(page: Page): RichText {
   return title.title;
 }
 
-export async function getCustomProperty<
-  T,
-  CustomProperties extends AnyCustomProperties
->(
-  customProperty: CustomProperty<T, CustomProperties>,
+export async function getCustomPropertyValue<T, CustomFrontmatter>(
+  customProperty: CMSCustomProperty<T, CustomFrontmatter>,
   page: Page | PageWithChildren,
-  cms: CMS<CustomProperties>,
-  inProgress: Partial<CustomProperties>
+  cms: CMS<CustomFrontmatter>
 ): Promise<T | undefined> {
   switch (customProperty.type) {
     case 'property':
-      return getPropertyWithOutput(page, customProperty.property);
+      return getPropertyValue<T>(page, customProperty.property);
     case 'derived':
-      return customProperty.derive(page, cms, inProgress);
-    case 'derived-from-children': {
-      if (!('children' in page)) {
-        throw new Error(
-          `Custom property requires PageWithChildren, but children not yet fetched`
-        );
-      }
-      return customProperty.derive(page, cms, inProgress);
-    }
+      return customProperty.derive(page, cms);
+    default:
+      unreachable(customProperty);
   }
 }
 
@@ -814,7 +781,6 @@ class PageContentCache implements CacheConfig {
 ////////////////////////////////////////////////////////////////////////////////
 
 const DEBUG_ASSETS = DEBUG_CMS.extend('assets');
-const EXPIRY_TIME_BUFFER_MS = 60 * 1000;
 
 type AssetConfig = NonNullable<CMSConfig['assets']>;
 
@@ -927,4 +893,30 @@ class AssetCache {
       throw error;
     }
   }
+}
+
+function examples() {
+  const notion: NotionClient = undefined as any;
+  const myProps = (page: Page) => ({});
+
+  const cms = new CMS({
+    notion,
+    database_id: 'example',
+    slug: undefined,
+    visible: true,
+    getFrontmatter: (page) => ({
+      date: getPropertyValue(page, {
+        name: 'Date',
+        type: 'date',
+      }),
+      subtitle: getPropertyValue(
+        page,
+        {
+          name: 'Subtitle',
+          type: 'rich_text',
+        },
+        richTextAsPlainText
+      ),
+    }),
+  });
 }

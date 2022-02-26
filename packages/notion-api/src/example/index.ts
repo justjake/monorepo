@@ -26,7 +26,7 @@ const Recipes = new CMS({
   }),
   slug: undefined, // Use page ID
   visible: true, // All pages visible
-  customProperties: {},
+  CustomFrontmatter: {},
   cache: {
     directory: path.join(__dirname, './cache'),
   },

@@ -8,6 +8,7 @@ import {
   DEBUG,
   getBlockData,
   getProperty,
+  isFullPage,
   NotionClient,
   Page,
   PropertyPointer,
@@ -122,7 +123,7 @@ const ObjectLookup: ObjectLookup = {
     );
     DEBUG_ASSET('lookup page %s: %s', request.id, hit ? 'hit' : 'miss');
 
-    if ('last_edited_time' in page) {
+    if (isFullPage(page)) {
       fillCache(cacheBehavior, () => cache.addPage(page));
       return page;
     }
@@ -375,7 +376,7 @@ export async function ensureEmojiCopied(args: {
 
   if (cacheBehavior !== 'refresh' && fs.existsSync(destination)) {
     DEBUG_ASSET('found emoji %s as %s', emoji, destination);
-    return destination;
+    return destinationBasename;
   }
 
   if (cacheBehavior === 'read-only') {

@@ -2,7 +2,9 @@
   "name": "@jitl/monorepo",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "rebuild-api": "nx build notion-api && cd dist/packages/notion-api && yarn"
+  },
   "private": true,
   "dependencies": {
     "jotai": "npm:@jitl/jotai@^1.5.1",
