@@ -373,11 +373,7 @@ export function richTextAsPlainText(
     return richText;
   }
 
-  return richText
-    .map((token) => {
-      token.plain_text;
-    })
-    .join('');
+  return richText.map((token) => token.plain_text).join('');
 }
 
 type DateMentionData = MentionData<'date'>;

@@ -26,7 +26,7 @@ const Recipes = new CMS({
   }),
   slug: undefined, // Use page ID
   visible: true, // All pages visible
-  CustomFrontmatter: {},
+  getFrontmatter: () => ({}),
   cache: {
     directory: path.join(__dirname, './cache'),
   },
@@ -42,7 +42,7 @@ async function main() {
     const s = richTextAsPlainText(recipe.frontmatter.title);
 
     DEBUG_EXAMPLE(
-      'recipe "%s" with children %d',
+      'page "%s" with children %d',
       s,
       recipe.content.children.length
     );

@@ -217,6 +217,8 @@ export interface CMSRetrieveOptions {
   showInvisible?: boolean;
 }
 
+const DEBUG_SLUG = DEBUG_CMS.extend('slug');
+
 /**
  * A Content Management System (CMS) based on the Notion API.
  * Each CMS instance wraps a single Notion database that contains [CMSPage]s.
@@ -276,12 +278,14 @@ export class CMS<CustomFrontmatter = {}> {
     // Optimization - the default slug is just the page ID (without dashes),
     // so we can just load by ID.
     if (this.config.slug === undefined) {
+      DEBUG_SLUG('not configured, loading by ID: %s', slug);
       return this.loadPageById(slug);
     }
 
     // Optimization - empty slugs fall back to page ID, so maybe it's easier to load by ID.
     if (slug.length === 32) {
       try {
+        DEBUG_SLUG('length = 32, try loading by ID: %s', slug);
         const byId = this.loadPageById(slug);
         if (byId) {
           return byId;
@@ -301,6 +305,7 @@ export class CMS<CustomFrontmatter = {}> {
     } else {
       query.filter = slugFilter || visibleFilter;
     }
+    DEBUG_SLUG('query for slug %s: %o', slug, query.filter);
 
     for await (const page of iteratePaginatedAPI(
       this.config.notion.databases.query,
@@ -308,12 +313,14 @@ export class CMS<CustomFrontmatter = {}> {
     )) {
       if (isFullPage(page)) {
         const pageSlug = await this.getSlug(page);
+        DEBUG_SLUG('scan page %s: has slug %s', page.id, pageSlug);
 
         if (pageSlug === slug) {
           const visible =
             options.showInvisible || (await this.getVisible(page));
 
           if (!visible) {
+            DEBUG_SLUG('scan page %s: not visible');
             return undefined;
           }
 
@@ -494,14 +501,17 @@ export class CMS<CustomFrontmatter = {}> {
       defaultFrontmatter
     );
 
+    const finalFrontmatter = {
+      ...frontmatter,
+      slug,
+      visible,
+      title,
+    };
+    DEBUG_CMS('build page %s: %o', page.id, finalFrontmatter);
+
     return {
       content: pageWithChildren,
-      frontmatter: {
-        ...frontmatter,
-        slug,
-        visible,
-        title,
-      },
+      frontmatter: finalFrontmatter,
     };
   }
 
