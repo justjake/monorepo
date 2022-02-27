@@ -1,5 +1,3 @@
-@jitl/notion-api / [Exports](modules.md)
-
 <!-- This README is used in generated docs, and is copied by typedoc into ./docs -->
 
 This README documents the source code of `@jitl/notion-api`. For the general
@@ -22,7 +20,7 @@ The library is broadly separated into distinct feature sets:
 
 - A content management system supporting functions for downloading and
   caching content from a Notion database. The high-level interface for these
-  features is the [CMS](classes/CMS.md) class in the file
+  features is the [[CMS]] class in the file
   [../lib/content-management-system.ts](./lib/content-management-system.ts), but
   related lower-level tools for working with Notion assets are also exported.
 

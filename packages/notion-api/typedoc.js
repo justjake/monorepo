@@ -1,11 +1,25 @@
 const name = require('./package.json').name;
 const NO_THANKS = ['**/node_modules/**', './src/example/**'];
 
+const API_RELATED_CATEGORIES = [
+  'API',
+  'Page',
+  'Block',
+  'Rich Text',
+  'Property',
+  'Date',
+  'Query',
+  'User',
+];
+
+const CMS_RELATED_CATEGORIES = ['CMS', 'Asset', 'Backlink', 'Cache'];
+
 module.exports = {
   // disable package version in doc headers
   name,
+  readme: './README.typedoc.md',
   entryPoints: ['./src/index.ts'],
-  entryPointStrategy: 'expand',
+  entryPointStrategy: 'resolve',
   // link to master instead of the current git SHA
   // which is borked with our strategy of deploying the docs
   // in the repo.
@@ -24,6 +38,6 @@ module.exports = {
     // 'typedoc-plugin-toc-group',
   ],
   categorizeByGroup: true,
-  categoryOrder: ['API', 'Page', 'Block', 'Children', 'Rich Text'],
+  categoryOrder: [...API_RELATED_CATEGORIES, ...CMS_RELATED_CATEGORIES],
   sort: ['source-order'],
 };

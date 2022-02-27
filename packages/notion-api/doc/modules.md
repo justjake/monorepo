@@ -29,32 +29,16 @@
 - [MentionData](modules.md#mentiondata)
 - [Mention](modules.md#mention)
 
-### Asset Type aliases
-
-- [Asset](modules.md#asset)
-- [AssetRequest](modules.md#assetrequest)
-
-### CMS Type aliases
-
-- [CMSCustomPropertyPointer](modules.md#cmscustompropertypointer)
-- [CMSCustomProperty](modules.md#cmscustomproperty)
-- [CMSFrontmatter](modules.md#cmsfrontmatter)
-- [CMSPageOf](modules.md#cmspageof)
-
-### Cache Type aliases
-
-- [CacheBehavior](modules.md#cachebehavior)
-
-### Date Type aliases
-
-- [DateResponse](modules.md#dateresponse)
-
 ### Property Type aliases
 
 - [PropertyType](modules.md#propertytype)
 - [Property](modules.md#property)
 - [PropertyDataMap](modules.md#propertydatamap)
 - [PropertyPointerWithOutput](modules.md#propertypointerwithoutput)
+
+### Date Type aliases
+
+- [DateResponse](modules.md#dateresponse)
 
 ### Query Type aliases
 
@@ -69,6 +53,22 @@
 - [User](modules.md#user)
 - [Person](modules.md#person)
 - [Bot](modules.md#bot)
+
+### CMS Type aliases
+
+- [CMSCustomPropertyPointer](modules.md#cmscustompropertypointer)
+- [CMSCustomProperty](modules.md#cmscustomproperty)
+- [CMSFrontmatter](modules.md#cmsfrontmatter)
+- [CMSPageOf](modules.md#cmspageof)
+
+### Asset Type aliases
+
+- [Asset](modules.md#asset)
+- [AssetRequest](modules.md#assetrequest)
+
+### Cache Type aliases
+
+- [CacheBehavior](modules.md#cachebehavior)
 
 ### API Functions
 
@@ -98,6 +98,22 @@
 - [richTextAsPlainText](modules.md#richtextasplaintext)
 - [visitTextTokens](modules.md#visittexttokens)
 
+### Property Functions
+
+- [getPropertyData](modules.md#getpropertydata)
+- [getProperty](modules.md#getproperty)
+- [getPropertyValue](modules.md#getpropertyvalue)
+
+### Date Functions
+
+- [notionDateStartAsDate](modules.md#notiondatestartasdate)
+
+### CMS Functions
+
+- [defaultSlug](modules.md#defaultslug)
+- [getPageTitle](modules.md#getpagetitle)
+- [getCustomPropertyValue](modules.md#getcustompropertyvalue)
+
 ### Asset Functions
 
 - [getAssetRequestKey](modules.md#getassetrequestkey)
@@ -111,26 +127,15 @@
 
 - [buildBacklinks](modules.md#buildbacklinks)
 
-### CMS Functions
-
-- [defaultSlug](modules.md#defaultslug)
-- [getPageTitle](modules.md#getpagetitle)
-- [getCustomPropertyValue](modules.md#getcustompropertyvalue)
-
 ### Cache Functions
 
 - [getFromCache](modules.md#getfromcache)
 - [fillCache](modules.md#fillcache)
 
-### Date Functions
+### Asset Variables
 
-- [notionDateStartAsDate](modules.md#notiondatestartasdate)
-
-### Property Functions
-
-- [getPropertyData](modules.md#getpropertydata)
-- [getProperty](modules.md#getproperty)
-- [getPropertyValue](modules.md#getpropertyvalue)
+- [DOWNLOAD\_PERMISSION\_ERROR](modules.md#download_permission_error)
+- [DOWNLOAD\_HTTP\_ERROR](modules.md#download_http_error)
 
 ### API
 
@@ -146,20 +151,14 @@ const client &#x3D; new NotionClient({
 
 - [NotionClientDebugLogger](modules.md#notionclientdebuglogger)
 
-### Asset Variables
-
-- [DOWNLOAD\_PERMISSION\_ERROR](modules.md#download_permission_error)
-- [DOWNLOAD\_HTTP\_ERROR](modules.md#download_http_error)
-
 ### API Interfaces
 
 - [PaginatedList](interfaces/PaginatedList.md)
 - [PaginatedArgs](interfaces/PaginatedArgs.md)
 
-### Backlink Interfaces
+### Property Interfaces
 
-- [BacklinkFrom](interfaces/BacklinkFrom.md)
-- [Backlink](interfaces/Backlink.md)
+- [PropertyPointer](interfaces/PropertyPointer.md)
 
 ### CMS Interfaces
 
@@ -169,17 +168,18 @@ const client &#x3D; new NotionClient({
 - [CMSPage](interfaces/CMSPage.md)
 - [CMSRetrieveOptions](interfaces/CMSRetrieveOptions.md)
 
-### Property Interfaces
+### Backlink Interfaces
 
-- [PropertyPointer](interfaces/PropertyPointer.md)
-
-### Backlink Classes
-
-- [Backlinks](classes/Backlinks.md)
+- [BacklinkFrom](interfaces/BacklinkFrom.md)
+- [Backlink](interfaces/Backlink.md)
 
 ### CMS Classes
 
 - [CMS](classes/CMS.md)
+
+### Backlink Classes
+
+- [Backlinks](classes/Backlinks.md)
 
 ### Cache Classes
 
@@ -387,63 +387,190 @@ A mention token.
 
 ___
 
-## Asset Type aliases
+## Property Type aliases
 
-### Asset
+### PropertyType
 
-Ƭ **Asset**: `NonNullable`<[`Page`](modules.md#page)[``"icon"``]\>
+Ƭ **PropertyType**: `AnyProperty`[``"type"``]
 
-An internal, external or emoji asset from the Notion API.
+The type of a property.
 
 #### Defined in
 
-[lib/assets.ts:40](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L40)
+[lib/notion-api.ts:614](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L614)
 
 ___
 
-### AssetRequest
+### Property
 
-Ƭ **AssetRequest**: { `object`: ``"page"`` ; `id`: `string` ; `field`: ``"icon"``  } \| { `object`: ``"page"`` ; `id`: `string` ; `field`: ``"cover"``  } \| { `object`: ``"page"`` ; `id`: `string` ; `field`: ``"properties"`` ; `property`: [`PropertyPointer`](interfaces/PropertyPointer.md)<`any`\> ; `propertyIndex?`: `number`  } \| { `object`: ``"block"`` ; `id`: `string` ; `field`: ``"image"``  } \| { `object`: ``"block"`` ; `id`: `string` ; `field`: ``"icon"``  } \| { `object`: ``"user"`` ; `id`: `string` ; `field`: ``"avatar_url"``  }
+Ƭ **Property**<`Type`\>: `Extract`<`AnyProperty`, { `type`: `Type`  }\>
 
-An AssetRequest indicates an asset within a Notion API object,
-such as a page icon or a image block's image.
+A property of a Notion page.
+
+#### Type parameters
+
+| Name | Type |
+| :------ | :------ |
+| `Type` | extends [`PropertyType`](modules.md#propertytype) = [`PropertyType`](modules.md#propertytype) |
+
+#### Defined in
+
+[lib/notion-api.ts:620](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L620)
+
+___
+
+### PropertyDataMap
+
+Ƭ **PropertyDataMap**: { [K in PropertyType]: PropertyTypeMap[K] extends { [key in K]: unknown } ? PropertyTypeMap[K][K] : never }
+
+Type-level map from property type to the data of that property.
 
 **`source`**
 
 ```typescript
-export type AssetRequest = {
-    object: 'page';
-    id: string;
-    field: 'icon';
-} | {
-    object: 'page';
-    id: string;
-    field: 'cover';
-} | {
-    object: 'page';
-    id: string;
-    field: 'properties';
-    property: PropertyPointer<any>;
-    propertyIndex?: number; // assumed to be 0
-} | {
-    object: 'block';
-    id: string;
-    field: 'image';
-} | {
-    object: 'block';
-    id: string;
-    field: 'icon';
-} // eg, for callout
- | {
-    object: 'user';
-    id: string;
-    field: 'avatar_url';
+export type PropertyDataMap = {
+    [K in PropertyType]: PropertyTypeMap[K] extends {
+        [key in K]: unknown;
+    } ? PropertyTypeMap[K][K] : never;
 };
 ```
 
 #### Defined in
 
-[lib/assets.ts:48](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L48)
+[lib/notion-api.ts:634](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L634)
+
+___
+
+### PropertyPointerWithOutput
+
+Ƭ **PropertyPointerWithOutput**<`T`\>: { [P in keyof PropertyDataMap]: PropertyDataMap[P] extends T \| null ? PropertyPointer<P\> : never }[[`PropertyType`](modules.md#propertytype)]
+
+A pointer to a property in a Notion API page of any property type that has
+`T` as the property data.
+
+#### Type parameters
+
+| Name |
+| :------ |
+| `T` |
+
+#### Defined in
+
+[lib/notion-api.ts:687](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L687)
+
+___
+
+## Date Type aliases
+
+### DateResponse
+
+Ƭ **DateResponse**: `DateMentionData`[``"date"``]
+
+Notion date type.
+
+#### Defined in
+
+[lib/notion-api.ts:469](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L469)
+
+___
+
+## Query Type aliases
+
+### Filter
+
+Ƭ **Filter**: `NonNullable`<`QueryDatabaseParameters`[``"filter"``]\>
+
+Any kind of filter in a database query.
+
+#### Defined in
+
+[lib/notion-api.ts:582](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L582)
+
+___
+
+### PropertyFilter
+
+Ƭ **PropertyFilter**: `Extract`<[`Filter`](modules.md#filter), { `type?`: `string`  }\>
+
+Property filters in a database query.
+
+#### Defined in
+
+[lib/notion-api.ts:587](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L587)
+
+___
+
+### CompoundFilter
+
+Ƭ **CompoundFilter**: `Exclude`<[`Filter`](modules.md#filter), [`PropertyFilter`](modules.md#propertyfilter)\>
+
+Compound filters, like `and` or `or`.
+
+#### Defined in
+
+[lib/notion-api.ts:592](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L592)
+
+___
+
+### Sorts
+
+Ƭ **Sorts**: `NonNullable`<`QueryDatabaseParameters`[``"sorts"``]\>
+
+Sorting for a database query.
+
+#### Defined in
+
+[lib/notion-api.ts:597](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L597)
+
+___
+
+### Sort
+
+Ƭ **Sort**: `any`[][`number`]
+
+A single sort in a database query.
+
+#### Defined in
+
+[lib/notion-api.ts:602](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L602)
+
+___
+
+## User Type aliases
+
+### User
+
+Ƭ **User**: `GetUserResponse`
+
+Person or Bot
+
+#### Defined in
+
+[lib/notion-api.ts:560](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L560)
+
+___
+
+### Person
+
+Ƭ **Person**: `Extract`<[`User`](modules.md#user), { `type`: ``"person"``  }\>
+
+Person
+
+#### Defined in
+
+[lib/notion-api.ts:566](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L566)
+
+___
+
+### Bot
+
+Ƭ **Bot**: `Extract`<[`User`](modules.md#user), { `type`: ``"bot"``  }\>
+
+Bot
+
+#### Defined in
+
+[lib/notion-api.ts:572](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L572)
 
 ___
 
@@ -556,6 +683,66 @@ type MyPage = CMSPageOf<typeof MyCMS>;
 
 ___
 
+## Asset Type aliases
+
+### Asset
+
+Ƭ **Asset**: `NonNullable`<[`Page`](modules.md#page)[``"icon"``]\>
+
+An internal, external or emoji asset from the Notion API.
+
+#### Defined in
+
+[lib/assets.ts:40](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L40)
+
+___
+
+### AssetRequest
+
+Ƭ **AssetRequest**: { `object`: ``"page"`` ; `id`: `string` ; `field`: ``"icon"``  } \| { `object`: ``"page"`` ; `id`: `string` ; `field`: ``"cover"``  } \| { `object`: ``"page"`` ; `id`: `string` ; `field`: ``"properties"`` ; `property`: [`PropertyPointer`](interfaces/PropertyPointer.md)<`any`\> ; `propertyIndex?`: `number`  } \| { `object`: ``"block"`` ; `id`: `string` ; `field`: ``"image"``  } \| { `object`: ``"block"`` ; `id`: `string` ; `field`: ``"icon"``  } \| { `object`: ``"user"`` ; `id`: `string` ; `field`: ``"avatar_url"``  }
+
+An AssetRequest indicates an asset within a Notion API object,
+such as a page icon or a image block's image.
+
+**`source`**
+
+```typescript
+export type AssetRequest = {
+    object: 'page';
+    id: string;
+    field: 'icon';
+} | {
+    object: 'page';
+    id: string;
+    field: 'cover';
+} | {
+    object: 'page';
+    id: string;
+    field: 'properties';
+    property: PropertyPointer<any>;
+    propertyIndex?: number; // assumed to be 0
+} | {
+    object: 'block';
+    id: string;
+    field: 'image';
+} | {
+    object: 'block';
+    id: string;
+    field: 'icon';
+} // eg, for callout
+ | {
+    object: 'user';
+    id: string;
+    field: 'avatar_url';
+};
+```
+
+#### Defined in
+
+[lib/assets.ts:48](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L48)
+
+___
+
 ## Cache Type aliases
 
 ### CacheBehavior
@@ -577,193 +764,6 @@ export type CacheBehavior =
 #### Defined in
 
 [lib/cache.ts:14](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/cache.ts#L14)
-
-___
-
-## Date Type aliases
-
-### DateResponse
-
-Ƭ **DateResponse**: `DateMentionData`[``"date"``]
-
-Notion date type.
-
-#### Defined in
-
-[lib/notion-api.ts:469](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L469)
-
-___
-
-## Property Type aliases
-
-### PropertyType
-
-Ƭ **PropertyType**: `AnyProperty`[``"type"``]
-
-The type of a property.
-
-#### Defined in
-
-[lib/notion-api.ts:614](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L614)
-
-___
-
-### Property
-
-Ƭ **Property**<`Type`\>: `Extract`<`AnyProperty`, { `type`: `Type`  }\>
-
-A property of a Notion page.
-
-#### Type parameters
-
-| Name | Type |
-| :------ | :------ |
-| `Type` | extends [`PropertyType`](modules.md#propertytype) = [`PropertyType`](modules.md#propertytype) |
-
-#### Defined in
-
-[lib/notion-api.ts:620](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L620)
-
-___
-
-### PropertyDataMap
-
-Ƭ **PropertyDataMap**: { [K in PropertyType]: PropertyTypeMap[K] extends { [key in K]: unknown } ? PropertyTypeMap[K][K] : never }
-
-Type-level map from property type to the data of that property.
-
-**`source`**
-
-```typescript
-export type PropertyDataMap = {
-    [K in PropertyType]: PropertyTypeMap[K] extends {
-        [key in K]: unknown;
-    } ? PropertyTypeMap[K][K] : never;
-};
-```
-
-#### Defined in
-
-[lib/notion-api.ts:634](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L634)
-
-___
-
-### PropertyPointerWithOutput
-
-Ƭ **PropertyPointerWithOutput**<`T`\>: { [P in keyof PropertyDataMap]: PropertyDataMap[P] extends T \| null ? PropertyPointer<P\> : never }[[`PropertyType`](modules.md#propertytype)]
-
-A pointer to a property in a Notion API page of any property type that has
-`T` as the property data.
-
-#### Type parameters
-
-| Name |
-| :------ |
-| `T` |
-
-#### Defined in
-
-[lib/notion-api.ts:687](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L687)
-
-___
-
-## Query Type aliases
-
-### Filter
-
-Ƭ **Filter**: `NonNullable`<`QueryDatabaseParameters`[``"filter"``]\>
-
-Any kind of filter in a database query.
-
-#### Defined in
-
-[lib/notion-api.ts:582](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L582)
-
-___
-
-### PropertyFilter
-
-Ƭ **PropertyFilter**: `Extract`<[`Filter`](modules.md#filter), { `type?`: `string`  }\>
-
-Property filters in a database query.
-
-#### Defined in
-
-[lib/notion-api.ts:587](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L587)
-
-___
-
-### CompoundFilter
-
-Ƭ **CompoundFilter**: `Exclude`<[`Filter`](modules.md#filter), [`PropertyFilter`](modules.md#propertyfilter)\>
-
-Compound filters, like `and` or `or`.
-
-#### Defined in
-
-[lib/notion-api.ts:592](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L592)
-
-___
-
-### Sorts
-
-Ƭ **Sorts**: `NonNullable`<`QueryDatabaseParameters`[``"sorts"``]\>
-
-Sorting for a database query.
-
-#### Defined in
-
-[lib/notion-api.ts:597](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L597)
-
-___
-
-### Sort
-
-Ƭ **Sort**: `any`[][`number`]
-
-A single sort in a database query.
-
-#### Defined in
-
-[lib/notion-api.ts:602](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L602)
-
-___
-
-## User Type aliases
-
-### User
-
-Ƭ **User**: `GetUserResponse`
-
-Person or Bot
-
-#### Defined in
-
-[lib/notion-api.ts:560](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L560)
-
-___
-
-### Person
-
-Ƭ **Person**: `Extract`<[`User`](modules.md#user), { `type`: ``"person"``  }\>
-
-Person
-
-#### Defined in
-
-[lib/notion-api.ts:566](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L566)
-
-___
-
-### Bot
-
-Ƭ **Bot**: `Extract`<[`User`](modules.md#user), { `type`: ``"bot"``  }\>
-
-Bot
-
-#### Defined in
-
-[lib/notion-api.ts:572](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L572)
 
 ## API Functions
 
@@ -1192,6 +1192,308 @@ tokens. Does not consider children.
 
 ___
 
+## Property Functions
+
+### getPropertyData
+
+▸ **getPropertyData**<`Type`\>(`property`): [`PropertyDataMap`](modules.md#propertydatamap)[`Type`]
+
+Generic way to get a property's data.
+Suggested usage is with a switch statement on property.type to narrow the
+result.
+
+```
+switch (prop.type) {
+  case 'title':
+  case 'rich_text':
+    getPropertyData(prop).forEach((token) => fn(token));
+    break;
+  // ...
+}
+```
+
+#### Type parameters
+
+| Name | Type |
+| :------ | :------ |
+| `Type` | extends ``"number"`` \| ``"title"`` \| ``"date"`` \| ``"rich_text"`` \| ``"url"`` \| ``"select"`` \| ``"multi_select"`` \| ``"people"`` \| ``"email"`` \| ``"phone_number"`` \| ``"files"`` \| ``"checkbox"`` \| ``"formula"`` \| ``"relation"`` \| ``"created_time"`` \| ``"created_by"`` \| ``"last_edited_time"`` \| ``"last_edited_by"`` \| ``"rollup"`` |
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `property` | [`Property`](modules.md#property)<`Type`\> |
+
+#### Returns
+
+[`PropertyDataMap`](modules.md#propertydatamap)[`Type`]
+
+#### Defined in
+
+[lib/notion-api.ts:657](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L657)
+
+___
+
+### getProperty
+
+▸ **getProperty**(`page`, `property`): [`Property`](modules.md#property) \| `undefined`
+
+Get the property with `name` and/or `id` from `page`.
+
+#### Parameters
+
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `page` | `Object` |  |
+| `property` | `Pick`<[`PropertyPointer`](interfaces/PropertyPointer.md)<``"number"`` \| ``"title"`` \| ``"date"`` \| ``"rich_text"`` \| ``"url"`` \| ``"select"`` \| ``"multi_select"`` \| ``"people"`` \| ``"email"`` \| ``"phone_number"`` \| ``"files"`` \| ``"checkbox"`` \| ``"formula"`` \| ``"relation"`` \| ``"created_time"`` \| ``"created_by"`` \| ``"last_edited_time"`` \| ``"last_edited_by"`` \| ``"rollup"``\>, ``"name"`` \| ``"id"``\> | Which property? |
+
+#### Returns
+
+[`Property`](modules.md#property) \| `undefined`
+
+The property with that name or id, or undefined if not found.
+
+#### Defined in
+
+[lib/notion-api.ts:703](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L703)
+
+___
+
+### getPropertyValue
+
+▸ **getPropertyValue**<`Type`\>(`page`, `propertyPointer`): [`PropertyDataMap`](modules.md#propertydatamap)[`Type`] \| `undefined`
+
+Get the value of property `propertyPointer` in `page`.
+
+#### Type parameters
+
+| Name | Type |
+| :------ | :------ |
+| `Type` | extends ``"number"`` \| ``"title"`` \| ``"date"`` \| ``"rich_text"`` \| ``"url"`` \| ``"select"`` \| ``"multi_select"`` \| ``"people"`` \| ``"email"`` \| ``"phone_number"`` \| ``"files"`` \| ``"checkbox"`` \| ``"formula"`` \| ``"relation"`` \| ``"created_time"`` \| ``"created_by"`` \| ``"last_edited_time"`` \| ``"last_edited_by"`` \| ``"rollup"`` |
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `page` | `Object` |
+| `propertyPointer` | [`PropertyPointer`](interfaces/PropertyPointer.md)<`Type`\> |
+
+#### Returns
+
+[`PropertyDataMap`](modules.md#propertydatamap)[`Type`] \| `undefined`
+
+The value of the property, or `undefined` if the property isn't found, or has a different type.
+
+#### Defined in
+
+[lib/notion-api.ts:726](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L726)
+
+▸ **getPropertyValue**<`Type`, `T`\>(`page`, `propertyPointer`, `transform`): `T` \| `undefined`
+
+Get the value of property `propertyPointer` in `page`, transformed by `transform`.
+
+#### Type parameters
+
+| Name | Type |
+| :------ | :------ |
+| `Type` | extends ``"number"`` \| ``"title"`` \| ``"date"`` \| ``"rich_text"`` \| ``"url"`` \| ``"select"`` \| ``"multi_select"`` \| ``"people"`` \| ``"email"`` \| ``"phone_number"`` \| ``"files"`` \| ``"checkbox"`` \| ``"formula"`` \| ``"relation"`` \| ``"created_time"`` \| ``"created_by"`` \| ``"last_edited_time"`` \| ``"last_edited_by"`` \| ``"rollup"`` |
+| `T` | `T` |
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `page` | `Object` |
+| `propertyPointer` | [`PropertyPointer`](interfaces/PropertyPointer.md)<`Type`\> |
+| `transform` | (`propertyValue`: [`PropertyDataMap`](modules.md#propertydatamap)[`Type`]) => `T` |
+
+#### Returns
+
+`T` \| `undefined`
+
+The result of `as(propertyValue)`, or `undefined` if the property isn't found or has a different type.
+
+#### Defined in
+
+[lib/notion-api.ts:735](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L735)
+
+▸ **getPropertyValue**<`T`\>(`page`, `propertyPointer`): `T` \| `undefined`
+
+Get the value of property `propertyPointer` in `page`.
+
+#### Type parameters
+
+| Name |
+| :------ |
+| `T` |
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `page` | `Object` |
+| `propertyPointer` | [`PropertyPointerWithOutput`](modules.md#propertypointerwithoutput)<`T`\> |
+
+#### Returns
+
+`T` \| `undefined`
+
+The value of the property, or `undefined` if the property isn't found, or has a different type.
+
+#### Defined in
+
+[lib/notion-api.ts:745](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L745)
+
+▸ **getPropertyValue**<`P`, `T`\>(`page`, `propertyPointer`, `transform`): `T` \| `undefined`
+
+Get the value of property `propertyPointer` in `page`, transformed by `transform`.
+
+#### Type parameters
+
+| Name |
+| :------ |
+| `P` |
+| `T` |
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `page` | `Object` |
+| `propertyPointer` | [`PropertyPointerWithOutput`](modules.md#propertypointerwithoutput)<`P`\> |
+| `transform` | (`propertyValue`: `P`) => `T` |
+
+#### Returns
+
+`T` \| `undefined`
+
+The result of `as(propertyValue)`, or `undefined` if the property isn't found or has a different type.
+
+#### Defined in
+
+[lib/notion-api.ts:754](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L754)
+
+___
+
+## Date Functions
+
+### notionDateStartAsDate
+
+▸ **notionDateStartAsDate**(`date`): `Date`
+
+Convert a Notion date's start into a Javascript Date object.
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `date` | `DateResponse` \| `Date` |
+
+#### Returns
+
+`Date`
+
+#### Defined in
+
+[lib/notion-api.ts:475](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L475)
+
+▸ **notionDateStartAsDate**(`date`): `Date` \| `undefined`
+
+Convert a Notion date's start into a Javascript Date object.
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `date` | `undefined` \| `DateResponse` \| `Date` |
+
+#### Returns
+
+`Date` \| `undefined`
+
+#### Defined in
+
+[lib/notion-api.ts:480](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L480)
+
+___
+
+## CMS Functions
+
+### defaultSlug
+
+▸ **defaultSlug**(`page`): `string`
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `page` | `Object` |
+
+#### Returns
+
+`string`
+
+The default slug for the page, based on the page's ID.
+
+#### Defined in
+
+[lib/content-management-system.ts:655](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L655)
+
+___
+
+### getPageTitle
+
+▸ **getPageTitle**(`page`): `any`[]
+
+#### Parameters
+
+| Name | Type |
+| :------ | :------ |
+| `page` | `Object` |
+
+#### Returns
+
+`any`[]
+
+The title of `page`, as [RichText](modules.md#richtext).
+
+#### Defined in
+
+[lib/content-management-system.ts:665](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L665)
+
+___
+
+### getCustomPropertyValue
+
+▸ **getCustomPropertyValue**<`T`, `CustomFrontmatter`\>(`customProperty`, `page`, `cms`): `Promise`<`T` \| `undefined`\>
+
+Compute a custom property.
+
+#### Type parameters
+
+| Name |
+| :------ |
+| `T` |
+| `CustomFrontmatter` |
+
+#### Parameters
+
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `customProperty` | [`CMSCustomProperty`](modules.md#cmscustomproperty)<`T`, `CustomFrontmatter`\> | The custom property to compute. |
+| `page` | {} \| [`PageWithChildren`](modules.md#pagewithchildren) |  |
+| `cms` | [`CMS`](classes/CMS.md)<`CustomFrontmatter`\> |  |
+
+#### Returns
+
+`Promise`<`T` \| `undefined`\>
+
+#### Defined in
+
+[lib/content-management-system.ts:683](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L683)
+
+___
+
 ## Asset Functions
 
 ### getAssetRequestKey
@@ -1374,83 +1676,6 @@ If no [Backlinks](classes/Backlinks.md) is given, a new one will be created and 
 
 ___
 
-## CMS Functions
-
-### defaultSlug
-
-▸ **defaultSlug**(`page`): `string`
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `page` | `Object` |
-
-#### Returns
-
-`string`
-
-The default slug for the page, based on the page's ID.
-
-#### Defined in
-
-[lib/content-management-system.ts:655](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L655)
-
-___
-
-### getPageTitle
-
-▸ **getPageTitle**(`page`): `any`[]
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `page` | `Object` |
-
-#### Returns
-
-`any`[]
-
-The title of `page`, as [RichText](modules.md#richtext).
-
-#### Defined in
-
-[lib/content-management-system.ts:665](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L665)
-
-___
-
-### getCustomPropertyValue
-
-▸ **getCustomPropertyValue**<`T`, `CustomFrontmatter`\>(`customProperty`, `page`, `cms`): `Promise`<`T` \| `undefined`\>
-
-Compute a custom property.
-
-#### Type parameters
-
-| Name |
-| :------ |
-| `T` |
-| `CustomFrontmatter` |
-
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `customProperty` | [`CMSCustomProperty`](modules.md#cmscustomproperty)<`T`, `CustomFrontmatter`\> | The custom property to compute. |
-| `page` | {} \| [`PageWithChildren`](modules.md#pagewithchildren) |  |
-| `cms` | [`CMS`](classes/CMS.md)<`CustomFrontmatter`\> |  |
-
-#### Returns
-
-`Promise`<`T` \| `undefined`\>
-
-#### Defined in
-
-[lib/content-management-system.ts:683](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L683)
-
-___
-
 ## Cache Functions
 
 ### getFromCache
@@ -1529,253 +1754,6 @@ If `hit` is true, or `cacheBehavior` is `"read-only"`, then `fill` is not called
 
 [lib/cache.ts:61](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/cache.ts#L61)
 
-___
-
-## Date Functions
-
-### notionDateStartAsDate
-
-▸ **notionDateStartAsDate**(`date`): `Date`
-
-Convert a Notion date's start into a Javascript Date object.
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `date` | `DateResponse` \| `Date` |
-
-#### Returns
-
-`Date`
-
-#### Defined in
-
-[lib/notion-api.ts:475](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L475)
-
-▸ **notionDateStartAsDate**(`date`): `Date` \| `undefined`
-
-Convert a Notion date's start into a Javascript Date object.
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `date` | `undefined` \| `DateResponse` \| `Date` |
-
-#### Returns
-
-`Date` \| `undefined`
-
-#### Defined in
-
-[lib/notion-api.ts:480](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L480)
-
-___
-
-## Property Functions
-
-### getPropertyData
-
-▸ **getPropertyData**<`Type`\>(`property`): [`PropertyDataMap`](modules.md#propertydatamap)[`Type`]
-
-Generic way to get a property's data.
-Suggested usage is with a switch statement on property.type to narrow the
-result.
-
-```
-switch (prop.type) {
-  case 'title':
-  case 'rich_text':
-    getPropertyData(prop).forEach((token) => fn(token));
-    break;
-  // ...
-}
-```
-
-#### Type parameters
-
-| Name | Type |
-| :------ | :------ |
-| `Type` | extends ``"number"`` \| ``"title"`` \| ``"date"`` \| ``"rich_text"`` \| ``"url"`` \| ``"select"`` \| ``"multi_select"`` \| ``"people"`` \| ``"email"`` \| ``"phone_number"`` \| ``"files"`` \| ``"checkbox"`` \| ``"formula"`` \| ``"relation"`` \| ``"created_time"`` \| ``"created_by"`` \| ``"last_edited_time"`` \| ``"last_edited_by"`` \| ``"rollup"`` |
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `property` | [`Property`](modules.md#property)<`Type`\> |
-
-#### Returns
-
-[`PropertyDataMap`](modules.md#propertydatamap)[`Type`]
-
-#### Defined in
-
-[lib/notion-api.ts:657](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L657)
-
-___
-
-### getProperty
-
-▸ **getProperty**(`page`, `property`): [`Property`](modules.md#property) \| `undefined`
-
-Get the property with `name` and/or `id` from `page`.
-
-#### Parameters
-
-| Name | Type | Description |
-| :------ | :------ | :------ |
-| `page` | `Object` |  |
-| `property` | `Pick`<[`PropertyPointer`](interfaces/PropertyPointer.md)<``"number"`` \| ``"title"`` \| ``"date"`` \| ``"rich_text"`` \| ``"url"`` \| ``"select"`` \| ``"multi_select"`` \| ``"people"`` \| ``"email"`` \| ``"phone_number"`` \| ``"files"`` \| ``"checkbox"`` \| ``"formula"`` \| ``"relation"`` \| ``"created_time"`` \| ``"created_by"`` \| ``"last_edited_time"`` \| ``"last_edited_by"`` \| ``"rollup"``\>, ``"name"`` \| ``"id"``\> | Which property? |
-
-#### Returns
-
-[`Property`](modules.md#property) \| `undefined`
-
-The property with that name or id, or undefined if not found.
-
-#### Defined in
-
-[lib/notion-api.ts:703](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L703)
-
-___
-
-### getPropertyValue
-
-▸ **getPropertyValue**<`Type`\>(`page`, `propertyPointer`): [`PropertyDataMap`](modules.md#propertydatamap)[`Type`] \| `undefined`
-
-Get the value of property `propertyPointer` in `page`.
-
-#### Type parameters
-
-| Name | Type |
-| :------ | :------ |
-| `Type` | extends ``"number"`` \| ``"title"`` \| ``"date"`` \| ``"rich_text"`` \| ``"url"`` \| ``"select"`` \| ``"multi_select"`` \| ``"people"`` \| ``"email"`` \| ``"phone_number"`` \| ``"files"`` \| ``"checkbox"`` \| ``"formula"`` \| ``"relation"`` \| ``"created_time"`` \| ``"created_by"`` \| ``"last_edited_time"`` \| ``"last_edited_by"`` \| ``"rollup"`` |
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `page` | `Object` |
-| `propertyPointer` | [`PropertyPointer`](interfaces/PropertyPointer.md)<`Type`\> |
-
-#### Returns
-
-[`PropertyDataMap`](modules.md#propertydatamap)[`Type`] \| `undefined`
-
-The value of the property, or `undefined` if the property isn't found, or has a different type.
-
-#### Defined in
-
-[lib/notion-api.ts:726](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L726)
-
-▸ **getPropertyValue**<`Type`, `T`\>(`page`, `propertyPointer`, `transform`): `T` \| `undefined`
-
-Get the value of property `propertyPointer` in `page`, transformed by `transform`.
-
-#### Type parameters
-
-| Name | Type |
-| :------ | :------ |
-| `Type` | extends ``"number"`` \| ``"title"`` \| ``"date"`` \| ``"rich_text"`` \| ``"url"`` \| ``"select"`` \| ``"multi_select"`` \| ``"people"`` \| ``"email"`` \| ``"phone_number"`` \| ``"files"`` \| ``"checkbox"`` \| ``"formula"`` \| ``"relation"`` \| ``"created_time"`` \| ``"created_by"`` \| ``"last_edited_time"`` \| ``"last_edited_by"`` \| ``"rollup"`` |
-| `T` | `T` |
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `page` | `Object` |
-| `propertyPointer` | [`PropertyPointer`](interfaces/PropertyPointer.md)<`Type`\> |
-| `transform` | (`propertyValue`: [`PropertyDataMap`](modules.md#propertydatamap)[`Type`]) => `T` |
-
-#### Returns
-
-`T` \| `undefined`
-
-The result of `as(propertyValue)`, or `undefined` if the property isn't found or has a different type.
-
-#### Defined in
-
-[lib/notion-api.ts:735](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L735)
-
-▸ **getPropertyValue**<`T`\>(`page`, `propertyPointer`): `T` \| `undefined`
-
-Get the value of property `propertyPointer` in `page`.
-
-#### Type parameters
-
-| Name |
-| :------ |
-| `T` |
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `page` | `Object` |
-| `propertyPointer` | [`PropertyPointerWithOutput`](modules.md#propertypointerwithoutput)<`T`\> |
-
-#### Returns
-
-`T` \| `undefined`
-
-The value of the property, or `undefined` if the property isn't found, or has a different type.
-
-#### Defined in
-
-[lib/notion-api.ts:745](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L745)
-
-▸ **getPropertyValue**<`P`, `T`\>(`page`, `propertyPointer`, `transform`): `T` \| `undefined`
-
-Get the value of property `propertyPointer` in `page`, transformed by `transform`.
-
-#### Type parameters
-
-| Name |
-| :------ |
-| `P` |
-| `T` |
-
-#### Parameters
-
-| Name | Type |
-| :------ | :------ |
-| `page` | `Object` |
-| `propertyPointer` | [`PropertyPointerWithOutput`](modules.md#propertypointerwithoutput)<`P`\> |
-| `transform` | (`propertyValue`: `P`) => `T` |
-
-#### Returns
-
-`T` \| `undefined`
-
-The result of `as(propertyValue)`, or `undefined` if the property isn't found or has a different type.
-
-#### Defined in
-
-[lib/notion-api.ts:754](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L754)
-
-## API
-
-A logger for the @notionhq/client Client that logs to the @jitl/notion-api
-namespace.
-
-&#x60;&#x60;&#x60;typescript
-const client &#x3D; new NotionClient({
-  logger: NotionClientDebugLogger,
-  // ...
-})
-&#x60;&#x60;&#x60; Variables
-
-### NotionClientDebugLogger
-
-• **NotionClientDebugLogger**: [`NotionClientDebugLogger`](modules.md#notionclientdebuglogger)
-
-#### Defined in
-
-[lib/notion-api.ts:57](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L57)
-
-___
-
 ## Asset Variables
 
 ### DOWNLOAD\_PERMISSION\_ERROR
@@ -1801,3 +1779,25 @@ encountering other HTTP error codes.
 #### Defined in
 
 [lib/assets.ts:303](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L303)
+
+___
+
+## API
+
+A logger for the @notionhq/client Client that logs to the @jitl/notion-api
+namespace.
+
+&#x60;&#x60;&#x60;typescript
+const client &#x3D; new NotionClient({
+  logger: NotionClientDebugLogger,
+  // ...
+})
+&#x60;&#x60;&#x60; Variables
+
+### NotionClientDebugLogger
+
+• **NotionClientDebugLogger**: [`NotionClientDebugLogger`](modules.md#notionclientdebuglogger)
+
+#### Defined in
+
+[lib/notion-api.ts:57](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L57)
