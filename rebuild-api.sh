@@ -9,7 +9,7 @@ SAVE=(node_modules yarn.lock)
 mkdir -p "$TEMPDIR"
 
 for file in "${SAVE[@]}" ; do
-  if [[ -f "$DIR/$file" ]]; then
+  if [[ -e "$DIR/$file" ]]; then
     mv "$DIR/$file" "$TEMPDIR/$file"
   fi
 done
@@ -17,7 +17,7 @@ done
 yarn nx build notion-api
 
 for file in "${SAVE[@]}" ; do
-  if [[ -f "$TEMPDIR/$file" ]]; then
+  if [[ -e "$TEMPDIR/$file" ]]; then
     mv -v "$TEMPDIR/$file" "$DIR/$file"
   fi
 done

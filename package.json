@@ -3,8 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "rebuild-notion": "./rebuild-api.sh",
-    "publish-notion": "yarn rebuild-notion && cd dist/packages/notion-api && npm publish"
+    "rebuild-notion": "./rebuild-api.sh"
   },
   "private": true,
   "dependencies": {

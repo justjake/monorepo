@@ -112,7 +112,7 @@ export type CMSCustomProperty<T, CustomFrontmatter> =
  */
 export interface CMSConfig<
   /** The custom frontmatter metadata this CMS should produce */
-  CustomFrontmatter = {}
+  CustomFrontmatter
 > {
   /** Notion API client */
   notion: NotionClient;
@@ -243,7 +243,7 @@ export interface CMSPage<CustomFrontmatter> {
  * ```
  * @category CMS
  */
-export type CMSPageOf<T extends CMS> = T extends CMS<infer Props>
+export type CMSPageOf<T extends CMS<any>> = T extends CMS<infer Props>
   ? CMSPage<Props>
   : never;
 
@@ -268,7 +268,10 @@ const DEBUG_SLUG = DEBUG_CMS.extend('slug');
  *
  * @category CMS
  */
-export class CMS<CustomFrontmatter = {}> {
+export class CMS<
+  /** The custom frontmatter metadata returned by [[CMSConfig.getFrontmatter]] */
+  CustomFrontmatter
+> {
   /** Indexes links between the pages that have been loaded into memory. */
   public backlinks = new Backlinks();
   /**
@@ -707,7 +710,7 @@ interface PageContentEntry {
   children: BlockWithChildren[];
 }
 
-type CacheConfig = NonNullable<CMSConfig['cache']>;
+type CacheConfig = NonNullable<CMSConfig<unknown>['cache']>;
 
 class PageContentCache implements CacheConfig {
   constructor(public config: CacheConfig = {}) {}
@@ -869,7 +872,7 @@ class PageContentCache implements CacheConfig {
 
 const DEBUG_ASSETS = DEBUG_CMS.extend('assets');
 
-type AssetConfig = NonNullable<CMSConfig['assets']>;
+type AssetConfig = NonNullable<CMSConfig<unknown>['assets']>;
 
 class AssetCache {
   constructor(public config: AssetConfig) {}
