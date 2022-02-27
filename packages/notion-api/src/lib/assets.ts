@@ -1,3 +1,9 @@
+/**
+ * This file contains types for working with assets (aka, "file objects") from
+ * the Notion public API.
+ * @category Asset
+ * @module
+ */
 import * as https from 'https';
 import * as fs from 'fs';
 import * as mimeTypes from 'mime-types';
@@ -29,12 +35,15 @@ const DEBUG_ASSET = DEBUG.extend('asset');
 
 /**
  * An internal, external or emoji asset from the Notion API.
+ * @category Asset
  */
 export type Asset = NonNullable<Page['icon']>;
 
 /**
  * An AssetRequest indicates an asset within a Notion API object,
  * such as a page icon or a image block's image.
+ * @category Asset
+ * @source
  */
 export type AssetRequest =
   | { object: 'page'; id: string; field: 'icon' }
@@ -51,7 +60,8 @@ export type AssetRequest =
   | { object: 'user'; id: string; field: 'avatar_url' };
 
 /**
- * Get a unique string key for de-duplicating [AssetRequest]s
+ * Get a unique string key for de-duplicating [[AssetRequest]]s
+ * @category Asset
  */
 export function getAssetRequestKey(assetRequest: AssetRequest): string {
   const { object, id, field, ...rest } = assetRequest;
@@ -215,6 +225,7 @@ const AssetHandlers: AssetHandlers = {
 
 /**
  * Look up an asset from the Notion API.
+ * @category Asset
  */
 export async function performAssetRequest(args: {
   notion: NotionClient;
@@ -249,6 +260,10 @@ export async function performAssetRequest(args: {
 // Asset downloading
 ////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @returns a string key unique for the asset, suitable for use in a hashmap, cache, or filename.
+ * @category Asset
+ */
 export function getAssetKey(asset: Asset): string {
   if (asset.type === 'file') {
     const url = asset.file.url;
@@ -274,7 +289,17 @@ const EMOJI_DATASOURCE_APPLE_PATH = path.dirname(
   require.resolve('emoji-datasource-apple')
 );
 
+/**
+ * [[Error.name]] of errors thrown by [[ensureImageDownloaded]] when
+ * encountering a permission error, eg if the asset is expired.
+ * @category Asset
+ */
 export const DOWNLOAD_PERMISSION_ERROR = 'DownloadPermissionError';
+/**
+ * [[Error.name]] of errors thrown by [[ensureImageDownloaded]] when
+ * encountering other HTTP error codes.
+ * @category Asset
+ */
 export const DOWNLOAD_HTTP_ERROR = 'DownloadHTTPError';
 
 /**
@@ -283,6 +308,7 @@ export const DOWNLOAD_HTTP_ERROR = 'DownloadHTTPError';
  * that has that prefix.
  *
  * @returns Promise<string> Relative path from `directory` to image on disk.
+ * @category Asset
  */
 export async function ensureImageDownloaded(args: {
   url: string;
@@ -357,6 +383,7 @@ export async function ensureImageDownloaded(args: {
 /**
  * Copy an emoji image for `emoji` into `directory`.
  * @returns relative path from `directory` to the image.
+ * @category Asset
  */
 export async function ensureEmojiCopied(args: {
   emoji: string;
@@ -396,6 +423,7 @@ export async function ensureEmojiCopied(args: {
 /**
  * Ensure `asset` is present on disk in `directory`.
  * @returns Relative path from `directory` to the asset on disk, or undefined.
+ * @category Asset
  */
 export async function ensureAssetInDirectory(args: {
   asset: Asset;
@@ -440,6 +468,7 @@ export async function ensureAssetInDirectory(args: {
 /**
  * Notion file assets are time-expiring signed S3 URLs. This function strips the
  * signature to make a stable hash.
+ * @category Asset
  */
 function hashNotionAssetUrl(input: string): string {
   const url = new URL(input);

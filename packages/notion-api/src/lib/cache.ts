@@ -1,9 +1,33 @@
+/**
+ * This file implements a cache and cache implementation helpers.
+ * @category Cache
+ * @module
+ */
 import { AssetRequest, getAssetRequestKey } from '..';
 import { Asset } from './assets';
 import { Block, BlockWithChildren, Page, PageWithChildren } from './notion-api';
 
-export type CacheBehavior = 'read-only' | 'fill' | 'refresh';
+/**
+ * @category Cache
+ * @source
+ */
+export type CacheBehavior =
+  /** Read from the cache, but don't update it */
+  | 'read-only'
+  /** Read from the cache, or update it if needed. */
+  | 'fill'
+  /** Don't read from the cache, and update it with new values */
+  | 'refresh';
 
+/**
+ * Either returns a value by calling `fromCache`, or by calling `fromScratch`,
+ * depending on `cacheBehavior`.
+ * @category Cache
+ * @param cacheBehavior `"fill"` by default.
+ * @param fromCache Function to read the value from the cache.
+ * @param fromScratch Function to compute the value from scratch.
+ * @returns `[value, hit]` where `hit` is `true` if the value was fetched from the cache.
+ */
 export function getFromCache<T1, T2>(
   cacheBehavior: CacheBehavior | undefined,
   fromCache: () => T1 | undefined,
@@ -17,10 +41,23 @@ export function getFromCache<T1, T2>(
   return fromScratch().then((value) => [value, false]);
 }
 
+/**
+ * Possibly call `fill` to fill the cache, depending on `cacheBehavior`.
+ * @param cacheBehavior `"fill"` by default.
+ * @param fill Function to fill the cache.
+ * @category Cache
+ */
 export function fillCache(
   cacheBehavior: CacheBehavior | undefined,
   fill: () => void
 ): void;
+/**
+ * Possibly call `fill` to fill the cache, depending on `cacheBehavior` and `hit`.
+ * If `hit` is true, or `cacheBehavior` is `"read-only"`, then `fill` is not called.
+ * @param cacheBehavior `"fill"` by default.
+ * @param fill Function to fill the cache.
+ * @category Cache
+ */
 export function fillCache(
   cacheBehavior: CacheBehavior | undefined,
   hit: boolean,
@@ -46,9 +83,11 @@ export function fillCache(
   fill();
 }
 
+/**
+ * Stores values from the Notion API.
+ * @category Cache
+ */
 export class NotionObjectIndex {
-  readonly type = 'fill' as const;
-
   /** Whole pages */
   page: Map<string, Page> = new Map();
   pageWithChildren: Map<string, PageWithChildren> = new Map();
@@ -65,13 +104,6 @@ export class NotionObjectIndex {
 
   /** Parent page ID. */
   parentPageId: Map<string, string | undefined> = new Map();
-
-  asReadOnly(): NotionObjectIndex {
-    return {
-      ...this,
-      type: 'read-only',
-    };
-  }
 
   addBlock(
     block: Block | BlockWithChildren,

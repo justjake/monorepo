@@ -1,6 +1,6 @@
 {
   "name": "@jitl/notion-api",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "license": "Apache-2.0",
   "author": {
     "name": "Jake Teton-Landis",
@@ -29,6 +29,12 @@
     "node-emoji": "^1.11.0"
   },
   "devDependencies": {
-    "@notionhq/client": "^0.4.13"
+    "@notionhq/client": "^0.4.13",
+    "markserv": "^1.17.4",
+    "typedoc": "^0.22.12",
+    "typedoc-plugin-inline-sources": "^1.0.1",
+    "typedoc-plugin-markdown": "^3.11.14",
+    "typedoc-plugin-missing-exports": "^0.22.6",
+    "typedoc-plugin-toc-group": "^0.0.5"
   }
 }

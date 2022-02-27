@@ -1,3 +1,9 @@
+/**
+ * This file introduces a [[CMS]] - a bare-bones, read-only headless content
+ * management system - on top of the pages in a Notion database.
+ * @category CMS
+ * @module
+ */
 /* eslint-disable @typescript-eslint/ban-types */
 import * as path from 'path';
 import * as fsOld from 'fs';
@@ -19,6 +25,7 @@ import {
   richTextAsPlainText,
   Sorts,
   visitChildBlocks,
+  isFullPage,
 } from './notion-api';
 import {
   Asset,
@@ -36,7 +43,6 @@ import {
   NotionObjectIndex,
 } from './cache';
 import { Backlinks, buildBacklinks } from './backlinks';
-import { isFullPage, notionDateStartAsDate } from '..';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
@@ -44,29 +50,37 @@ const fs = fsOld.promises;
 /**
  * Specifies that the CMS should look up a custom property from regular Page property.
  * Consider using this with a formula property for maximum flexibility.
+ * @category CMS
+ * @source
  */
 export type CMSCustomPropertyPointer<T> = {
   type: 'property';
+  /** Indicates which property to fetch data from */
   property: PropertyPointerWithOutput<T>;
 };
 
 /**
  * Specifies that the CMS should compute a value for the page using a function.
+ * @category CMS
+ * @source
  */
 export interface CMSCustomPropertyDerived<T, CustomFrontmatter> {
   type: 'derived';
+  /** Computes the custom property value from the page using a function */
   derive: (page: Page, cms: CMS<CustomFrontmatter>) => T | Promise<T>;
 }
 
 /**
  * Specifies how a CMS should get a custom property.
+ * @category CMS
+ * @source
  */
 export type CMSCustomProperty<T, CustomFrontmatter> =
   | CMSCustomPropertyPointer<T>
   | CMSCustomPropertyDerived<T, CustomFrontmatter>;
 
 /**
- * Configuration for the CMS.
+ * Configuration for a CMS instance.
  *
  * The CMS can compute whatever frontmatter you want from the pages it loads.
  * If you're coming from a Markdown static site generator, think of this as the
@@ -76,6 +90,7 @@ export type CMSCustomProperty<T, CustomFrontmatter> =
  * since the Notion API doesn't guarantee that any property exists, and fetching
  * property data can be quite verbose.
  *
+ * @example:
  * ```
  * getFrontmatter: (page) => ({
  *   date: getPropertyValue(page, {
@@ -92,8 +107,13 @@ export type CMSCustomProperty<T, CustomFrontmatter> =
  *   ),
  * }),
  * ```
+ * @category CMS
+ * @source
  */
-export interface CMSConfig<CustomFrontmatter = {}> {
+export interface CMSConfig<
+  /** The custom frontmatter metadata this CMS should produce */
+  CustomFrontmatter = {}
+> {
   /** Notion API client */
   notion: NotionClient;
 
@@ -130,12 +150,15 @@ export interface CMSConfig<CustomFrontmatter = {}> {
   title?: CMSCustomProperty<RichText | string, CustomFrontmatter>;
 
   /**
-   * Function to derive custom frontmatter from a page. Use this function to
-   * read properties from the page and return them in a well-typed way.
+   * Defines the custom frontmatter from a page. Use this function to read
+   * properties from the page and return them in a well-typed way.
    */
   getFrontmatter: (
+    /** Page to generate frontmatter for */
     page: PageWithChildren,
+    /** The CMS instance; use this to eg fetch backlinks or assets */
     cms: CMS<CustomFrontmatter>,
+    /** Default frontmatter for the page, which is already derived */
     defaultFrontmatter: CMSDefaultFrontmatter
   ) => CustomFrontmatter | Promise<CustomFrontmatter>;
 
@@ -184,17 +207,28 @@ export interface CMSConfig<CustomFrontmatter = {}> {
   };
 }
 
-interface CMSDefaultFrontmatter {
+/**
+ * All [[CMSPage]]s have at least this frontmatter.
+ * @category CMS
+ * @source
+ */
+export interface CMSDefaultFrontmatter {
   title: RichText | string;
   slug: string;
   visible: boolean;
 }
 
+/**
+ * The frontmatter of a [[CMSPage]].
+ * @category CMS
+ * @source
+ */
 export type CMSFrontmatter<CustomFrontmatter> = CMSDefaultFrontmatter &
   Omit<CustomFrontmatter, keyof CMSDefaultFrontmatter>;
 
 /**
  * A CMSPage is a Notion page and its computed CMS frontmatter.
+ * @category CMS
  */
 export interface CMSPage<CustomFrontmatter> {
   frontmatter: CMSFrontmatter<CustomFrontmatter>;
@@ -203,17 +237,22 @@ export interface CMSPage<CustomFrontmatter> {
 
 /**
  * Get the CMSPage type from a CMS.
- * @example
- * ```
+ * ```typescript
+ * const MyCMS = new CMS({ ... })
  * type MyPage = CMSPageOf<typeof MyCMS>;
  * ```
+ * @category CMS
  */
 export type CMSPageOf<T extends CMS> = T extends CMS<infer Props>
   ? CMSPage<Props>
   : never;
 
+/**
+ * Options for [[CMS]] retrieve methods.
+ * @category CMS
+ */
 export interface CMSRetrieveOptions {
-  /** If true, ignore the `visible` property of any retrieved [CMSPage]s by always considering them visible. */
+  /** If true, ignore the `visible` property of any retrieved [[CMSPage]]s by always considering them visible. */
   showInvisible?: boolean;
 }
 
@@ -221,14 +260,19 @@ const DEBUG_SLUG = DEBUG_CMS.extend('slug');
 
 /**
  * A Content Management System (CMS) based on the Notion API.
- * Each CMS instance wraps a single Notion database that contains [CMSPage]s.
- * @see CMSConfig.
+ * Each CMS instance wraps a single Notion database that contains [[CMSPage]]s.
+ * Pages and their contents loaded from the CMS are cached in-memory, and
+ * optionally on disk.
+ *
+ * See [[CMSConfig]] for configuration options.
+ *
+ * @category CMS
  */
 export class CMS<CustomFrontmatter = {}> {
-  /** Indexes links to page */
+  /** Indexes links between the pages that have been loaded into memory. */
   public backlinks = new Backlinks();
   /**
-   * Indexes Notion API objects in pages you've fetched.
+   * Indexes Notion API objects in pages that have been loaded into memory.
    */
   public notionObjects = new NotionObjectIndex();
   /** Maps from Page ID to CMSPage */
@@ -240,6 +284,7 @@ export class CMS<CustomFrontmatter = {}> {
 
   constructor(public config: CMSConfig<CustomFrontmatter>) {}
 
+  /** Retrieve a CMS page by ID. */
   async loadPageById(
     pageId: string,
     options: CMSRetrieveOptions = {}
@@ -271,6 +316,13 @@ export class CMS<CustomFrontmatter = {}> {
     return cmsPage;
   }
 
+  /**
+   * Retrieve a CMS page by its slug.
+   *
+   * Note that configuring the CMS to use a property for the slug is more
+   * efficient than using a derived function, which requires a O(n) scan of the
+   * database.
+   */
   async loadPageBySlug(
     slug: string,
     options: CMSRetrieveOptions = {}
@@ -342,6 +394,9 @@ export class CMS<CustomFrontmatter = {}> {
     }
   }
 
+  /**
+   * Query the database, returning all matching [[CMSPage]]s.
+   */
   async *query(
     args: {
       filter?: Filter;
@@ -509,10 +564,13 @@ export class CMS<CustomFrontmatter = {}> {
     };
     DEBUG_CMS('build page %s: %o', page.id, finalFrontmatter);
 
-    return {
+    const cmsPage: CMSPage<CustomFrontmatter> = {
       content: pageWithChildren,
       frontmatter: finalFrontmatter,
     };
+
+    this.pages.set(cmsPage.content.id, cmsPage);
+    return cmsPage;
   }
 
   private async getTitle(page: PageWithChildren): Promise<RichText | string> {
@@ -589,10 +647,21 @@ export class CMS<CustomFrontmatter = {}> {
 // Custom Properties
 ////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @category CMS
+ * @param page
+ * @returns The default slug for the page, based on the page's ID.
+ */
 export function defaultSlug(page: Page) {
   return page.id.split('-').join('');
 }
 
+/**
+ * @category Page
+ * @category CMS
+ * @param page
+ * @returns {RichText} The title of `page`, as [[RichText]].
+ */
 export function getPageTitle(page: Page): RichText {
   const title = Object.values(page.properties).find(
     (prop) => prop.type === 'title'
@@ -603,6 +672,14 @@ export function getPageTitle(page: Page): RichText {
   return title.title;
 }
 
+/**
+ * Compute a custom property.
+ * @category CMS
+ * @param customProperty The custom property to compute.
+ * @param page
+ * @param cms
+ * @returns
+ */
 export async function getCustomPropertyValue<T, CustomFrontmatter>(
   customProperty: CMSCustomProperty<T, CustomFrontmatter>,
   page: Page | PageWithChildren,

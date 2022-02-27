@@ -1,3 +1,9 @@
+/**
+ * Tools for building up a set of backlinks in-memory, because the API doesn't
+ * provide backlink information yet.
+ * @category Backlink
+ * @module
+ */
 import {
   DEBUG,
   getBlockData,
@@ -7,17 +13,28 @@ import {
   visitTextTokens,
 } from './notion-api';
 
+/**
+ * Where a page was mentioned from
+ * @category Backlink
+ */
 export interface BacklinkFrom {
   mentionedFromPageId: string;
   mentionedFromBlockId: string;
 }
 
+/**
+ * A link from one block to another page.
+ * @category Backlink
+ */
 export interface Backlink extends BacklinkFrom {
   mentionedPageId: string;
 }
 
 const NOTION_DOMAINS = ['.notion.so', '.notion.site', '.notion.com'];
 
+/**
+ * @category API
+ */
 export function isNotionDomain(domain: string): boolean {
   return NOTION_DOMAINS.some((suffix) => domain.endsWith(suffix));
 }
@@ -26,6 +43,8 @@ const DEBUG_BACKLINKS = DEBUG.extend('backlinks');
 
 /**
  * Records links from a page to other pages.
+ * See [[buildBacklinks]].
+ * @category Backlink
  */
 export class Backlinks {
   linksToPage = new Map<string, Backlink[]>();
@@ -131,6 +150,11 @@ export class Backlinks {
   }
 }
 
+/**
+ * Crawl the given `pages` and build all the backlinks between them into `backlinks`.
+ * If no [[Backlinks]] is given, a new one will be created and returned.
+ * @category Backlink
+ */
 export function buildBacklinks(
   pages: PageWithChildren[],
   backlinks = new Backlinks()
@@ -179,6 +203,7 @@ export function buildBacklinks(
 
 /**
  * Ensure a UUID has dashes, since sometimes Notion IDs don't have dashes.
+ * @category API
  */
 export function uuidWithDashes(id: string) {
   if (id.includes('-')) {
