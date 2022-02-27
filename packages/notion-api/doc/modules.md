@@ -316,7 +316,7 @@ ___
 
 ### RichText
 
-Ƭ **RichText**: `Extract`<[`Block`](modules.md#block), { `type`: ``"paragraph"``  }\>[``"paragraph"``][``"text"``]
+Ƭ **RichText**: [`Block`](modules.md#block)<``"paragraph"``\>[``"paragraph"``][``"text"``]
 
 Notion API rich text. An array of rich text tokens.
 
@@ -334,7 +334,7 @@ A single token of rich text.
 
 #### Defined in
 
-[lib/notion-api.ts:416](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L416)
+[lib/notion-api.ts:412](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L412)
 
 ___
 
@@ -346,7 +346,7 @@ The type of mention.
 
 #### Defined in
 
-[lib/notion-api.ts:424](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L424)
+[lib/notion-api.ts:420](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L420)
 
 ___
 
@@ -364,7 +364,7 @@ The data of a mention type.
 
 #### Defined in
 
-[lib/notion-api.ts:430](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L430)
+[lib/notion-api.ts:426](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L426)
 
 ___
 
@@ -383,7 +383,7 @@ A mention token.
 
 #### Defined in
 
-[lib/notion-api.ts:440](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L440)
+[lib/notion-api.ts:436](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L436)
 
 ___
 
@@ -397,7 +397,7 @@ The type of a property.
 
 #### Defined in
 
-[lib/notion-api.ts:614](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L614)
+[lib/notion-api.ts:610](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L610)
 
 ___
 
@@ -415,7 +415,7 @@ A property of a Notion page.
 
 #### Defined in
 
-[lib/notion-api.ts:620](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L620)
+[lib/notion-api.ts:616](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L616)
 
 ___
 
@@ -437,7 +437,7 @@ export type PropertyDataMap = {
 
 #### Defined in
 
-[lib/notion-api.ts:634](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L634)
+[lib/notion-api.ts:630](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L630)
 
 ___
 
@@ -456,7 +456,7 @@ A pointer to a property in a Notion API page of any property type that has
 
 #### Defined in
 
-[lib/notion-api.ts:687](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L687)
+[lib/notion-api.ts:683](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L683)
 
 ___
 
@@ -470,7 +470,7 @@ Notion date type.
 
 #### Defined in
 
-[lib/notion-api.ts:469](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L469)
+[lib/notion-api.ts:465](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L465)
 
 ___
 
@@ -484,7 +484,7 @@ Any kind of filter in a database query.
 
 #### Defined in
 
-[lib/notion-api.ts:582](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L582)
+[lib/notion-api.ts:578](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L578)
 
 ___
 
@@ -496,7 +496,7 @@ Property filters in a database query.
 
 #### Defined in
 
-[lib/notion-api.ts:587](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L587)
+[lib/notion-api.ts:583](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L583)
 
 ___
 
@@ -508,7 +508,7 @@ Compound filters, like `and` or `or`.
 
 #### Defined in
 
-[lib/notion-api.ts:592](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L592)
+[lib/notion-api.ts:588](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L588)
 
 ___
 
@@ -520,7 +520,7 @@ Sorting for a database query.
 
 #### Defined in
 
-[lib/notion-api.ts:597](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L597)
+[lib/notion-api.ts:593](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L593)
 
 ___
 
@@ -532,7 +532,7 @@ A single sort in a database query.
 
 #### Defined in
 
-[lib/notion-api.ts:602](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L602)
+[lib/notion-api.ts:598](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L598)
 
 ___
 
@@ -546,7 +546,7 @@ Person or Bot
 
 #### Defined in
 
-[lib/notion-api.ts:560](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L560)
+[lib/notion-api.ts:556](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L556)
 
 ___
 
@@ -558,7 +558,7 @@ Person
 
 #### Defined in
 
-[lib/notion-api.ts:566](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L566)
+[lib/notion-api.ts:562](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L562)
 
 ___
 
@@ -570,7 +570,7 @@ Bot
 
 #### Defined in
 
-[lib/notion-api.ts:572](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L572)
+[lib/notion-api.ts:568](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L568)
 
 ___
 
@@ -1164,7 +1164,7 @@ Plaintext string of rich text.
 
 #### Defined in
 
-[lib/notion-api.ts:449](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L449)
+[lib/notion-api.ts:445](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L445)
 
 ___
 
@@ -1188,7 +1188,7 @@ tokens. Does not consider children.
 
 #### Defined in
 
-[lib/notion-api.ts:503](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L503)
+[lib/notion-api.ts:499](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L499)
 
 ___
 
@@ -1230,7 +1230,7 @@ switch (prop.type) {
 
 #### Defined in
 
-[lib/notion-api.ts:657](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L657)
+[lib/notion-api.ts:653](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L653)
 
 ___
 
@@ -1255,7 +1255,7 @@ The property with that name or id, or undefined if not found.
 
 #### Defined in
 
-[lib/notion-api.ts:703](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L703)
+[lib/notion-api.ts:699](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L699)
 
 ___
 
@@ -1286,7 +1286,7 @@ The value of the property, or `undefined` if the property isn't found, or has a 
 
 #### Defined in
 
-[lib/notion-api.ts:726](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L726)
+[lib/notion-api.ts:722](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L722)
 
 ▸ **getPropertyValue**<`Type`, `T`\>(`page`, `propertyPointer`, `transform`): `T` \| `undefined`
 
@@ -1315,7 +1315,7 @@ The result of `as(propertyValue)`, or `undefined` if the property isn't found or
 
 #### Defined in
 
-[lib/notion-api.ts:735](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L735)
+[lib/notion-api.ts:731](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L731)
 
 ▸ **getPropertyValue**<`T`\>(`page`, `propertyPointer`): `T` \| `undefined`
 
@@ -1342,7 +1342,7 @@ The value of the property, or `undefined` if the property isn't found, or has a 
 
 #### Defined in
 
-[lib/notion-api.ts:745](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L745)
+[lib/notion-api.ts:741](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L741)
 
 ▸ **getPropertyValue**<`P`, `T`\>(`page`, `propertyPointer`, `transform`): `T` \| `undefined`
 
@@ -1371,7 +1371,7 @@ The result of `as(propertyValue)`, or `undefined` if the property isn't found or
 
 #### Defined in
 
-[lib/notion-api.ts:754](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L754)
+[lib/notion-api.ts:750](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L750)
 
 ___
 
@@ -1395,7 +1395,7 @@ Convert a Notion date's start into a Javascript Date object.
 
 #### Defined in
 
-[lib/notion-api.ts:475](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L475)
+[lib/notion-api.ts:471](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L471)
 
 ▸ **notionDateStartAsDate**(`date`): `Date` \| `undefined`
 
@@ -1413,7 +1413,7 @@ Convert a Notion date's start into a Javascript Date object.
 
 #### Defined in
 
-[lib/notion-api.ts:480](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L480)
+[lib/notion-api.ts:476](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L476)
 
 ___
 

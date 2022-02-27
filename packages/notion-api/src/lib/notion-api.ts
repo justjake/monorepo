@@ -404,11 +404,7 @@ export function visitChildBlocks(
  * Notion API rich text. An array of rich text tokens.
  * @category Rich Text
  */
-export type RichText = Extract<
-  Block,
-  { type: 'paragraph' }
->['paragraph']['text'];
-
+export type RichText = Block<'paragraph'>['paragraph']['text'];
 /**
  * A single token of rich text.
  * @category Rich Text
