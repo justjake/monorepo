@@ -17,13 +17,13 @@ The library is broadly separated into distinct feature sets:
 
 - A set of helpers for working with the Notion API. This includes
   common types derived from the API's response types, and some iteration helpers
-  for fetching content. See the file [../lib/notion-api.ts](./lib/notion-api.ts)
+  for fetching content. See the file [notion-api.ts](../src/lib/notion-api.ts)
   for details.
 
 - A content management system supporting functions for downloading and
   caching content from a Notion database. The high-level interface for these
   features is the [CMS](classes/CMS.md) class in the file
-  [../lib/content-management-system.ts](./lib/content-management-system.ts), but
+  [content-management-system.ts](../src/lib/content-management-system.ts), but
   related lower-level tools for working with Notion assets are also exported.
 
 ## Full API docs
