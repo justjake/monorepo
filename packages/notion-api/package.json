@@ -1,7 +1,20 @@
 {
   "name": "@jitl/notion-api",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "Apache-2.0",
+  "description": "The missing companion library for the official Notion public API.",
+  "keywords": [
+    "Notion",
+    "API",
+    "public API",
+    "notion client",
+    "cache",
+    "@notionhq/client",
+    "notion API",
+    "CMS",
+    "notion CMS",
+    "typescript"
+  ],
   "author": {
     "name": "Jake Teton-Landis",
     "email": "just.1.jake@gmail.com",
@@ -16,6 +29,10 @@
   },
   "peerDependencies": {
     "@notionhq/client": "^0.4.13"
+  },
+  "scripts": {
+    "doc": "typedoc",
+    "ship": "cd ../.. && yarn publish-notion"
   },
   "dependencies": {
     "@jitl/util": "*",
