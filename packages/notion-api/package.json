@@ -32,7 +32,7 @@
   },
   "scripts": {
     "doc": "typedoc",
-    "ship": "cd ../.. && yarn publish-notion"
+    "ship": "cd ../.. && ./rebuild-api.sh && cd dist/packages/notion-api && npm publish"
   },
   "dependencies": {
     "@jitl/util": "*",
