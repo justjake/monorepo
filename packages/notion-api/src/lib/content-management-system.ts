@@ -8,7 +8,10 @@
 import * as path from 'path';
 import * as fsOld from 'fs';
 import { unreachable } from '@jitl/util';
-import { QueryDatabaseParameters } from '@notionhq/client/build/src/api-endpoints';
+import {
+  GetPageResponse,
+  QueryDatabaseParameters,
+} from '@notionhq/client/build/src/api-endpoints';
 import {
   NotionClient,
   PageWithChildren,
@@ -43,6 +46,12 @@ import {
   NotionObjectIndex,
 } from './cache';
 import { Backlinks, buildBacklinks } from './backlinks';
+import {
+  APIErrorCode,
+  APIResponseError,
+  isNotionClientError,
+} from '@notionhq/client/build/src';
+import { Await } from '@notionhq/client/build/src/type-utils';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
@@ -150,16 +159,25 @@ export interface CMSConfig<
   title?: CMSCustomProperty<RichText | string, CustomFrontmatter>;
 
   /**
-   * Defines the custom frontmatter from a page. Use this function to read
-   * properties from the page and return them in a well-typed way.
+   * This function should return the custom frontmatter from a page. Use it to
+   * read properties from the page and return them in a well-typed way.
+   * @returns The custom frontmatter for `page`.
    */
   getFrontmatter: (
-    /** Page to generate frontmatter for */
+    /**
+     * Page to generate frontmatter for
+     */
     page: PageWithChildren,
-    /** The CMS instance; use this to eg fetch backlinks or assets */
-    cms: CMS<CustomFrontmatter>,
-    /** Default frontmatter for the page, which is already derived */
-    defaultFrontmatter: CMSDefaultFrontmatter
+    /**
+     * Default frontmatter for the page, which is already derived
+     */
+    defaultFrontmatter: CMSDefaultFrontmatter,
+    /**
+     * The CMS instance; use this to eg fetch backlinks or assets. Note that
+     * accessing this value will disable type inference for the `getFrontmatter`
+     * return value; this is a Typescript limitation.
+     */
+    cms: CMS<CustomFrontmatter>
   ) => CustomFrontmatter | Promise<CustomFrontmatter>;
 
   /**
@@ -292,14 +310,28 @@ export class CMS<
     pageId: string,
     options: CMSRetrieveOptions = {}
   ): Promise<CMSPage<CustomFrontmatter> | undefined> {
-    const cached = await this.pageContentCache.getPageContent(
-      this.config.notion,
-      pageId
-    );
+    let page: GetPageResponse;
+    let cached: Awaited<
+      ReturnType<typeof this.pageContentCache.getPageContent>
+    >;
+    try {
+      cached = await this.pageContentCache.getPageContent(
+        this.config.notion,
+        pageId
+      );
 
-    const page =
-      cached.page ||
-      (await this.config.notion.pages.retrieve({ page_id: pageId }));
+      page =
+        cached.page ||
+        (await this.config.notion.pages.retrieve({ page_id: pageId }));
+    } catch (error) {
+      if (
+        isNotionClientError(error) &&
+        error.code === APIErrorCode.ObjectNotFound
+      ) {
+        return undefined;
+      }
+      throw error;
+    }
 
     if (!isFullPage(page)) {
       return undefined;
@@ -351,7 +383,9 @@ export class CMS<
     }
 
     const query = this.getBaseQuery();
-    const visibleFilter = this.getVisibleFilter();
+    const visibleFilter = options.showInvisible
+      ? undefined
+      : this.getVisibleFilter();
     const slugFilter = this.getSlugFilter(slug);
     if (visibleFilter && slugFilter) {
       query.filter = {
@@ -555,8 +589,8 @@ export class CMS<
 
     const frontmatter = await this.config.getFrontmatter(
       pageWithChildren,
-      this,
-      defaultFrontmatter
+      defaultFrontmatter,
+      this
     );
 
     const finalFrontmatter = {

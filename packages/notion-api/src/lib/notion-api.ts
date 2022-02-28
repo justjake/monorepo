@@ -247,6 +247,32 @@ export function isFullBlock<Type extends BlockType>(
   return 'type' in block && type ? block.type === type : true;
 }
 
+/**
+ * Filter function returned by [[isFullBlockFilter]].
+ * @category Block
+ */
+export interface BlockFilterFunction<Type extends BlockType> {
+  (block: GetBlockResponse): block is Block<Type>;
+  (block: BlockWithChildren): block is BlockWithChildren<Type>;
+}
+
+/**
+ * Returns a filter type guard for blocks of the given `type`.
+ * See [[isFullBlock]] for more information.
+ *
+ * ```typescript
+ * const paragraphs: Array<Block<"paragraph">> = blocks.filter(isFullBlockFilter("paragraph"));
+ * ```
+ *
+ * @category Block
+ */
+export function isFullBlockFilter<Type extends BlockType>(
+  type: Type
+): BlockFilterFunction<Type> {
+  return ((block: Block): block is Block<Type> =>
+    isFullBlock(block, type)) as BlockFilterFunction<Type>;
+}
+
 type BlockTypeMap = {
   [K in BlockType]: Block<K>;
 };
@@ -633,6 +659,18 @@ export type PropertyDataMap = {
       PropertyTypeMap[K][K]
     : never;
 };
+
+/**
+ * @category Property
+ */
+export type SelectPropertyValue = NonNullable<PropertyDataMap['select']>;
+
+/**
+ * @category Property
+ */
+export type MultiSelectPropertyValue = NonNullable<
+  PropertyDataMap['multi_select']
+>;
 
 /**
  * Generic way to get a property's data.

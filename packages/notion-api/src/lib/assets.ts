@@ -56,6 +56,7 @@ export type AssetRequest =
       propertyIndex?: number; // assumed to be 0
     }
   | { object: 'block'; id: string; field: 'image' }
+  | { object: 'block'; id: string; field: 'file' }
   | { object: 'block'; id: string; field: 'icon' } // eg, for callout
   | { object: 'user'; id: string; field: 'avatar_url' };
 
@@ -164,6 +165,16 @@ const AssetHandlers: AssetHandlers = {
       const block = await ObjectLookup.block(args);
       if (block && block.type === 'image') {
         return block.image;
+      }
+    },
+    file: async (args) => {
+      const block = await ObjectLookup.block(args);
+      switch (block?.type) {
+        case 'audio':
+        case 'video':
+        case 'pdf':
+        case 'file':
+          return getBlockData(block);
       }
     },
   },
