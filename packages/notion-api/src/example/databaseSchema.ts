@@ -1,21 +1,26 @@
 import {
+  databaseSchemaDiffToString,
+  diffDatabaseSchemas,
   getPropertyValue,
   inferDatabaseSchema,
   isFullPage,
   iteratePaginatedAPI,
   NotionClient,
   richTextAsPlainText,
-} from '..';
+} from "..";
+import { runExample } from "./exampleHelpers";
 
-async function schemaExample(notion: NotionClient, database_id: string) {
+console.log("database schema");
+
+runExample(module, "Database schemas", async ({ notion, database_id }) => {
   const mySchema = inferDatabaseSchema({
-    Title: { type: 'title' },
-    SubTitle: { type: 'rich_text', name: 'Subtitle' },
-    PublishedDate: { type: 'date', name: 'Published Date' },
+    Title: { type: "title" },
+    SubTitle: { type: "rich_text", name: "Subtitle" },
+    PublishedDate: { type: "date", name: "Published Date" },
     IsPublished: {
-      type: 'checkbox',
-      name: 'Show In Production',
-      id: 'asdf123',
+      type: "checkbox",
+      name: "Show In Production",
+      id: "asdf123",
     },
   });
 
@@ -31,9 +36,18 @@ async function schemaExample(notion: NotionClient, database_id: string) {
   })) {
     if (isFullPage(page)) {
       const titleRichText = getPropertyValue(page, mySchema.Title);
-      console.log('Title: ', richTextAsPlainText(titleRichText));
+      console.log("Title: ", richTextAsPlainText(titleRichText));
       const isPublished = getPropertyValue(page, mySchema.IsPublished);
-      console.log('Is published: ', isPublished);
+      console.log("Is published: ", isPublished);
     }
   }
-}
+
+  // Print schema differences between our literal and the API.
+  const database = await notion.databases.retrieve({ database_id });
+  const diffs = diffDatabaseSchemas({ before: mySchema, after: database.properties });
+  for (const change of diffs) {
+    console.log(
+      databaseSchemaDiffToString(change, { beforeName: "mySchema", afterName: "API database" })
+    );
+  }
+});

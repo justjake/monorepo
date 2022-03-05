@@ -51,7 +51,6 @@ import {
   APIResponseError,
   isNotionClientError,
 } from '@notionhq/client/build/src';
-import { Await } from '@notionhq/client/build/src/type-utils';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;

@@ -14,6 +14,7 @@ import {
   QueryDatabaseParameters,
 } from '@notionhq/client/build/src/api-endpoints';
 import { Assert } from '@notionhq/client/build/src/type-utils';
+import fastSafeStringify from 'fast-safe-stringify';
 import { debug } from 'debug';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,9 +155,7 @@ export async function* iteratePaginatedAPI<Args extends PaginatedArgs, Item>(
  * ```
  * @category API
  */
-export async function asyncIterableToArray<T>(
-  iterable: AsyncIterable<T>
-): Promise<Array<T>> {
+export async function asyncIterableToArray<T>(iterable: AsyncIterable<T>): Promise<Array<T>> {
   const array = [];
   for await (const item of iterable) {
     array.push(item);
@@ -195,9 +194,7 @@ export type PageWithChildren = Page & { children: BlockWithChildren[] };
 /**
  * @category Page
  */
-export function isPageWithChildren(
-  page: GetPageResponse
-): page is PageWithChildren {
+export function isPageWithChildren(page: GetPageResponse): page is PageWithChildren {
   return isFullPage(page) && 'children' in page;
 }
 
@@ -217,10 +214,7 @@ export type BlockType = AnyBlock['type'];
  * A full Notion API block.
  * @category Block
  */
-export type Block<Type extends BlockType = BlockType> = Extract<
-  AnyBlock,
-  { type: Type }
->;
+export type Block<Type extends BlockType = BlockType> = Extract<AnyBlock, { type: Type }>;
 
 /**
  * The Notion API may return a "partial" block object if your API token can't
@@ -268,9 +262,7 @@ export interface BlockFilterFunction<Type extends BlockType> {
  *
  * @category Block
  */
-export function isFullBlockFilter<Type extends BlockType>(
-  type: Type
-): BlockFilterFunction<Type> {
+export function isFullBlockFilter<Type extends BlockType>(type: Type): BlockFilterFunction<Type> {
   return ((block: Block): block is Block<Type> =>
     isFullBlock(block, type)) as BlockFilterFunction<Type>;
 }
@@ -295,9 +287,7 @@ export type BlockDataMap = {
  * Generic way to get a block's data.
  * @category Block
  */
-export function getBlockData<Type extends BlockType>(
-  block: Block<Type>
-): BlockDataMap[Type] {
+export function getBlockData<Type extends BlockType>(block: Block<Type>): BlockDataMap[Type] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (block as any)[block.type];
 }
@@ -307,15 +297,14 @@ export function getBlockData<Type extends BlockType>(
  * forming a recursive tree of blocks.
  * @category Block
  */
-export type BlockWithChildren<Type extends BlockType = BlockType> =
-  Block<Type> & { children: BlockWithChildren[] };
+export type BlockWithChildren<Type extends BlockType = BlockType> = Block<Type> & {
+  children: BlockWithChildren[];
+};
 
 /**
  * @category Block
  */
-export function isBlockWithChildren(
-  block: GetBlockResponse
-): block is BlockWithChildren {
+export function isBlockWithChildren(block: GetBlockResponse): block is BlockWithChildren {
   return isFullBlock(block) && 'children' in block;
 }
 
@@ -355,10 +344,7 @@ export async function getChildBlocksWithChildrenRecursively(
   notion: NotionClient,
   parentId: string
 ): Promise<BlockWithChildren[]> {
-  const blocks = (await getChildBlocks(
-    notion,
-    parentId
-  )) as BlockWithChildren[];
+  const blocks = (await getChildBlocks(notion, parentId)) as BlockWithChildren[];
   DEBUG_CHILDREN('parent %s: fetched %s children', parentId, blocks.length);
 
   if (blocks.length === 0) {
@@ -368,10 +354,7 @@ export async function getChildBlocksWithChildrenRecursively(
   const result = await Promise.all(
     blocks.map(async (block) => {
       if (block.has_children) {
-        block.children = await getChildBlocksWithChildrenRecursively(
-          notion,
-          block.id
-        );
+        block.children = await getChildBlocksWithChildrenRecursively(notion, block.id);
       } else {
         block.children = [];
       }
@@ -399,10 +382,7 @@ export async function getBlockWithChildren(
   }
 
   if (block.has_children) {
-    block.children = await getChildBlocksWithChildrenRecursively(
-      notion,
-      block.id
-    );
+    block.children = await getChildBlocksWithChildrenRecursively(notion, block.id);
   } else {
     block.children = [];
   }
@@ -451,28 +431,22 @@ export type MentionType = AnyMention['mention']['type'];
  * The data of a mention type.
  * @category Rich Text
  */
-export type MentionData<Type extends MentionType> = Extract<
-  AnyMention['mention'],
-  { type: Type }
->;
+export type MentionData<Type extends MentionType> = Extract<AnyMention['mention'], { type: Type }>;
 
 /**
  * A mention token.
  * (This type doesn't seem to work very well.)
  * @category Rich Text
  */
-export type Mention<Type extends MentionType = MentionType> = Omit<
-  AnyMention,
-  'mention'
-> & { mention: MentionData<Type> };
+export type Mention<Type extends MentionType = MentionType> = Omit<AnyMention, 'mention'> & {
+  mention: MentionData<Type>;
+};
 
 /**
  * @returns Plaintext string of rich text.
  * @category Rich Text
  */
-export function richTextAsPlainText(
-  richText: string | RichText | undefined
-): string {
+export function richTextAsPlainText(richText: string | RichText | undefined): string {
   if (!richText) {
     return '';
   }
@@ -501,12 +475,8 @@ export function notionDateStartAsDate(date: DateResponse | Date): Date;
  * Convert a Notion date's start into a Javascript Date object.
  * @category Date
  */
-export function notionDateStartAsDate(
-  date: DateResponse | Date | undefined
-): Date | undefined;
-export function notionDateStartAsDate(
-  date: DateResponse | Date | undefined
-): Date | undefined {
+export function notionDateStartAsDate(date: DateResponse | Date | undefined): Date | undefined;
+export function notionDateStartAsDate(date: DateResponse | Date | undefined): Date | undefined {
   if (!date) {
     return undefined;
   }
@@ -524,10 +494,7 @@ export function notionDateStartAsDate(
  * tokens. Does not consider children.
  * @category Rich Text
  */
-export function visitTextTokens(
-  object: Block | Page,
-  fn: (token: RichTextToken) => void
-): void {
+export function visitTextTokens(object: Block | Page, fn: (token: RichTextToken) => void): void {
   if (object.object === 'page') {
     for (const [, prop] of objectEntries(object.properties)) {
       switch (prop.type) {
@@ -617,9 +584,10 @@ export type PropertyFilterType = AnyPropertyFilter['type'];
  * Property filters in a database query.
  * @category Query
  */
-export type PropertyFilter<
-  Type extends PropertyFilterType = PropertyFilterType
-> = Extract<AnyPropertyFilter, { type?: Type }>;
+export type PropertyFilter<Type extends PropertyFilterType = PropertyFilterType> = Extract<
+  AnyPropertyFilter,
+  { type?: Type }
+>;
 
 /**
  * Filter builder functions.
@@ -745,9 +713,7 @@ export type SelectPropertyValue = NonNullable<PropertyDataMap['select']>;
 /**
  * @category Property
  */
-export type MultiSelectPropertyValue = NonNullable<
-  PropertyDataMap['multi_select']
->;
+export type MultiSelectPropertyValue = NonNullable<PropertyDataMap['multi_select']>;
 
 /**
  * Generic way to get a property's data.
@@ -799,9 +765,7 @@ export type PropertyPointerWithOutput<
   /** The output data type of the property */
   T
 > = {
-  [P in keyof PropertyDataMap]: PropertyDataMap[P] extends T | null
-    ? PropertyPointer<P>
-    : never;
+  [P in keyof PropertyDataMap]: PropertyDataMap[P] extends T | null ? PropertyPointer<P> : never;
 }[PropertyType];
 
 /**
@@ -821,9 +785,7 @@ export function getProperty(
   }
 
   if (id) {
-    return Object.values(page.properties).find(
-      (property) => property.id === id
-    );
+    return Object.values(page.properties).find((property) => property.id === id);
   }
 
   return undefined;
@@ -898,9 +860,7 @@ export type Database = Extract<GetDatabaseResponse, { title: unknown }>;
  * This function confirms that all database data is available.
  * @category Database
  */
-export function isFullDatabase(
-  database: GetDatabaseResponse
-): database is Database {
+export function isFullDatabase(database: GetDatabaseResponse): database is Database {
   return 'title' in database;
 }
 
@@ -934,13 +894,42 @@ export type PropertySchema<Type extends PropertyType = PropertyType> = Extract<
   { type: Type }
 >;
 
+type PropertySchemaTypeMap = {
+  [K in PropertyType]: PropertySchema<K>;
+};
+
+/**
+ * Type-level map from property type to the schema data of that property.
+ * @category Database
+ * @source
+ */
+export type PropertySchemaDataMap = {
+  [K in PropertyType]: PropertySchemaTypeMap[K] extends { [key in K]: unknown }
+    ? // @ts-expect-error "Too complex" although, it works?
+      PropertySchemaTypeMap[K][K]
+    : never;
+};
+
+/**
+ * Get the type-specific schema data of `propertySchema`.
+ * @param propertySchema
+ * @returns
+ * @category Database
+ */
+export function getPropertySchemaData<Type extends PropertyType>(
+  propertySchema: PropertySchema<Type>
+): PropertySchemaDataMap[Type] {
+  return (propertySchema as any)[propertySchema.type];
+}
+
 /**
  * A partial [[PropertySchema]] that contains at least the `type` field.
  * Used to create a [[PartialDatabaseSchema]].
  * @category Database
  */
-export type PartialPropertySchema<Type extends PropertyType = PropertyType> =
-  Partial<PropertySchema<Type>> & { name: string; type: Type };
+export type PartialPropertySchema<Type extends PropertyType = PropertyType> = Partial<
+  PropertySchema<Type>
+> & { name: string; type: Type };
 
 /**
  * A partial [[DatabaseSchema]] that contains at least the `type` field of any defined property.
@@ -1016,9 +1005,9 @@ export type PartialDatabaseSchemaFromSchemaWithOnlyType<
  * @returns The inferred PartialDatabaseSchema subtype.
  * @category Database
  */
-export function inferDatabaseSchema<
-  T extends PartialDatabaseSchemaWithOnlyType
->(schema: T): PartialDatabaseSchemaFromSchemaWithOnlyType<T> {
+export function inferDatabaseSchema<T extends PartialDatabaseSchemaWithOnlyType>(
+  schema: T
+): PartialDatabaseSchemaFromSchemaWithOnlyType<T> {
   const result = {} as PartialDatabaseSchemaFromSchemaWithOnlyType<T>;
   for (const [key, propertySchema] of objectEntries(schema)) {
     type ResultProperty = typeof result[typeof key];
@@ -1035,4 +1024,311 @@ export function inferDatabaseSchema<
     } as ResultProperty;
   }
   return result;
+}
+
+type PropertyDiffPointer = Pick<PropertyPointer, 'name' | 'id'>;
+
+/**
+ * @category Database
+ */
+export type DatabaseSchemaDiff<
+  Before extends PartialDatabaseSchema,
+  After extends PartialDatabaseSchema
+> =
+  | {
+      /** Key in the database schema differs, but has same name/id. */
+      type: 'key';
+      property: PropertyDiffPointer;
+      before: keyof Before;
+      after: keyof After;
+    }
+  | {
+      /** A property previously didn't have an ID, but now does */
+      type: `property.id.${'added' | 'removed'}`;
+      property: { name: string };
+      id: string;
+    }
+  | {
+      /** Type of the property differs, but has same name/id. */
+      type: 'property.type';
+      property: PropertyDiffPointer;
+      before: PropertyType;
+      after: PropertyType;
+    }
+  | {
+      /**
+       * Property name changed. This is only detectable if the property has a
+       * defined ID in both before and after.
+       */
+      type: 'property.name';
+      property: { id: string };
+      before: string;
+      after: string;
+    }
+  | {
+      /**
+       * Schema of a property's data changed, eg the options of a multi_select.
+       * This diff is only available if both `before` and `after` have a fully
+       * defined PropertySchema with data.
+       */
+      type: 'property.schema';
+      before: PropertySchema;
+      after: PropertySchema;
+    }
+  | {
+      /** Property in `before`, but `after` has no property with same name/id. */
+      type: 'removed';
+      property: Assert<PropertyDiffPointer, PartialPropertySchema>;
+      before: keyof Before;
+    }
+  | {
+      /** Property in `after`, but `before` has no property with same name/id. */
+      type: 'added';
+      property: Assert<PropertyDiffPointer, PartialPropertySchema>;
+      after: keyof After;
+    };
+
+interface ResolvedDiffPointer<T extends PartialDatabaseSchema> {
+  key: keyof T;
+  property: PartialPropertySchema;
+}
+
+function getPropertySchema<T extends PartialDatabaseSchema>(
+  schema: PartialDatabaseSchema,
+  pointer: PropertyDiffPointer
+): ResolvedDiffPointer<T> | undefined {
+  for (const [key, propertySchema] of objectEntries(schema)) {
+    if (pointer.id && propertySchema.id === pointer.id) {
+      return { key, property: propertySchema };
+    }
+
+    if (propertySchema.name === pointer.name) {
+      return { key, property: propertySchema };
+    }
+  }
+}
+
+/**
+ * Diff a `before` and `after` database schemas.
+ *
+ * You can use this to validate an inferred schema literal against the actual
+ * schema fetched from the Notion API.
+ *
+ * ```typescript
+ * const mySchema = inferDatabaseSchema({
+ *   Title: { type: 'title' },
+ *   SubTitle: { type: 'rich_text', name: 'Subtitle' },
+ *   PublishedDate: { type: 'date', name: 'Published Date' },
+ *   IsPublished: {
+ *     type: 'checkbox',
+ *     name: 'Show In Production',
+ *     id: 'asdf123',
+ *   },
+ * });
+ *
+ * // Print schema differences between our literal and the API.
+ * const database = await notion.databases.retrieve({ database_id });
+ * const diffs = diffDatabaseSchemas({ before: mySchema, after: database.properties });
+ * for (const change of diffs) {
+ *   console.log(
+ *     databaseSchemaDiffToString(change, { beforeName: "mySchema", afterName: "API database" })
+ *   );
+ * }
+ * ```
+ *
+ * @returns An array of diffs between the `before` and `after` schemas.
+ * @warning This is O(N * M) over length of the schemas currently, but may be optimized in the future.
+ * @category Database
+ */
+export function diffDatabaseSchemas<
+  Before extends PartialDatabaseSchema,
+  After extends PartialDatabaseSchema
+>(args: { before: Before; after: After }): DatabaseSchemaDiff<Before, After>[] {
+  const { before, after } = args;
+  const result: DatabaseSchemaDiff<Before, After>[] = [];
+  const diff = (diff: DatabaseSchemaDiff<Before, After>) => result.push(diff);
+
+  for (const [beforeKey, beforeProp] of objectEntries(before)) {
+    const resolved = getPropertySchema(after, beforeProp);
+    if (!resolved) {
+      diff({
+        type: 'removed',
+        property: beforeProp,
+        before: beforeKey,
+      });
+      continue;
+    }
+
+    const { key: afterKey, property: afterProp } = resolved;
+
+    if (beforeKey !== afterKey) {
+      diff({
+        type: 'key',
+        property: afterProp,
+        before: beforeKey,
+        after: afterKey,
+      });
+    }
+
+    if (!beforeProp.id && afterProp.id) {
+      diff({
+        type: 'property.id.added',
+        property: beforeProp,
+        id: afterProp.id,
+      });
+    }
+
+    if (!afterProp.id && beforeProp.id) {
+      diff({
+        type: 'property.id.removed',
+        property: afterProp,
+        id: beforeProp.id,
+      });
+    }
+
+    if (beforeProp.name !== afterProp.name) {
+      diff({
+        type: 'property.name',
+        property: afterProp as { id: string },
+        before: beforeProp.name,
+        after: afterProp.name,
+      });
+    }
+
+    let typeChanged = false;
+    if (beforeProp.type !== afterProp.type) {
+      typeChanged = true;
+      diff({
+        type: 'property.type',
+        before: beforeProp.type,
+        after: afterProp.type,
+        property: afterProp,
+      });
+    }
+
+    if (!typeChanged && beforeProp.type in beforeProp && afterProp.type in afterProp) {
+      const beforePropSchema = beforeProp as PropertySchema;
+      const afterPropSchema = afterProp as PropertySchema;
+      const beforeData = getPropertySchemaData(beforePropSchema);
+      const afterData = getPropertySchemaData(afterPropSchema);
+
+      const beforeSerialized = fastSafeStringify.stable(beforeData);
+      const afterSerialized = fastSafeStringify.stable(afterData);
+
+      if (beforeSerialized !== afterSerialized) {
+        diff({
+          type: 'property.schema',
+          before: beforePropSchema,
+          after: afterPropSchema,
+        });
+      }
+    }
+  }
+
+  for (const [afterKey, afterProp] of objectEntries(after)) {
+    const resolved = getPropertySchema(before, afterProp);
+    if (!resolved) {
+      diff({
+        type: 'added',
+        property: afterProp,
+        after: afterKey,
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * See [[diffDatabaseSchemas]].
+ * @returns A string describing a diff between two database schemas.
+ * @category Database
+ */
+export function databaseSchemaDiffToString<
+  Before extends PartialDatabaseSchema,
+  After extends PartialDatabaseSchema
+>(
+  diff: DatabaseSchemaDiff<Before, After>,
+  options: {
+    /** Show "before" as this string */
+    beforeName?: string;
+    /** show "after" as this string */
+    afterName?: string;
+  } = {}
+): string {
+  const { beforeName = 'before', afterName = 'after' } = options;
+  function fmtKey(name: string | number | symbol) {
+    return `["${String(name)}"]`;
+  }
+  function fmtName(name: string) {
+    return `name: "${name}"`;
+  }
+  function fmtId(id: string | undefined) {
+    return id && `id: ${id}`;
+  }
+  function fmtType(type: string) {
+    return `type: ${type}`;
+  }
+  function fmtData(data: PropertySchemaDataMap[PropertyType] | undefined) {
+    if (!data || Object.keys(data).length === 0) {
+      return;
+    }
+    return `${JSON.stringify(data)}`;
+  }
+  function parts(...args: (string | undefined | false)[]) {
+    return args.filter(Boolean).join(', ');
+  }
+  function summarize(
+    property: PropertyDiffPointer | PartialPropertySchema | PropertySchema
+  ): string {
+    const name = fmtName(property.name);
+    const id = property.id && fmtId(property.id);
+    const type = 'type' in property && fmtType(property.type);
+    const data =
+      'type' in property &&
+      property.type in property &&
+      getPropertySchemaData(property as PropertySchema);
+    return parts(name, id, type, data && fmtData(data));
+  }
+  switch (diff.type) {
+    case 'added': {
+      return `${diff.type}: +${afterName}${fmtKey(diff.after)} ${summarize(diff.property)}`;
+    }
+    case 'removed': {
+      return `${diff.type}: -${beforeName}${fmtKey(diff.before)} ${summarize(diff.property)}`;
+    }
+    case 'key': {
+      return `${diff.type} renamed: ${beforeName}${fmtKey(diff.before)} -> ${afterName}${fmtKey(
+        diff.after
+      )}`;
+    }
+    case 'property.name': {
+      return `property renamed: { ${fmtId(diff.property.id)} ${fmtName(diff.before)} -> ${fmtName(
+        diff.after
+      )} }`;
+    }
+    case 'property.id.added': {
+      return `property id added: { ${fmtName(diff.property.name)} +${fmtId(diff.id)} }`;
+    }
+    case 'property.id.removed': {
+      return `property id removed: { ${fmtName(diff.property.name)} -${fmtId(diff.id)} }`;
+    }
+    case 'property.type': {
+      return `property type changed: { ${parts(
+        fmtId(diff.property.id),
+        fmtName(diff.property.name)
+      )} ${fmtType(diff.before)} -> ${fmtType(diff.after)} }`;
+    }
+    case 'property.schema': {
+      return `property schema changed: { ${parts(
+        fmtId(diff.after.id),
+        fmtName(diff.after.name),
+        fmtType(diff.after.type)
+      )} ${fmtData(getPropertySchemaData(diff.before))} -> ${fmtData(
+        getPropertySchemaData(diff.after)
+      )} }`;
+    }
+    default:
+      unreachable(diff);
+  }
 }
