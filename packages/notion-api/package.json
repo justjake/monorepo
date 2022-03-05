@@ -36,7 +36,7 @@
     "ship": "cd ../.. && ./rebuild-api.sh && cd dist/packages/notion-api && npm publish"
   },
   "dependencies": {
-    "@jitl/util": "*",
+    "@jitl/util": ">= 0.0.3",
     "@types/debug": "^4.1.7",
     "@types/mime-types": "^2.1.1",
     "debug": "^4.3.3",

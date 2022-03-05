@@ -4,14 +4,16 @@
  * @category API
  * @module
  */
-import { objectEntries } from '@jitl/util';
+import { isDefined, objectEntries, unreachable } from '@jitl/util';
 import { Client as NotionClient, Logger, LogLevel } from '@notionhq/client';
 import {
   GetBlockResponse,
+  GetDatabaseResponse,
   GetPageResponse,
   GetUserResponse,
   QueryDatabaseParameters,
 } from '@notionhq/client/build/src/api-endpoints';
+import { Assert } from '@notionhq/client/build/src/type-utils';
 import { debug } from 'debug';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -602,11 +604,86 @@ export type Bot = Extract<User, { type: 'bot' }>;
  * @category Query
  */
 export type Filter = NonNullable<QueryDatabaseParameters['filter']>;
+
+type AnyPropertyFilter = Extract<Filter, { type?: string }>;
+
+/**
+ * Type of a property filter.
+ * @category Query
+ */
+export type PropertyFilterType = AnyPropertyFilter['type'];
+
 /**
  * Property filters in a database query.
  * @category Query
  */
-export type PropertyFilter = Extract<Filter, { type?: string }>;
+export type PropertyFilter<
+  Type extends PropertyFilterType = PropertyFilterType
+> = Extract<AnyPropertyFilter, { type?: Type }>;
+
+/**
+ * Filter builder functions.
+ * @category Query
+ */
+export const Filter = {
+  /**
+   * Syntax sugar for building a [[PropertyFilter]].
+   */
+  property: <Type extends PropertyFilterType>(
+    filter: PropertyFilter<Type>
+  ): PropertyFilter<Type> => {
+    return filter;
+  },
+
+  /**
+   * Build a [[CompoundFilter]] from multiple arguments, or otherwise
+   * return the only filter.
+   *
+   * Note that the Notion API limits filter depth, but this function does not.
+   */
+  compound: (
+    type: 'or' | 'and',
+    ...filters: Array<Filter | undefined | false>
+  ): Filter | undefined => {
+    const defined = filters.filter((x): x is Filter => Boolean(x));
+
+    if (defined.length === 0) {
+      return;
+    }
+
+    if (defined.length === 1) {
+      return defined[0];
+    }
+
+    switch (type) {
+      case 'and':
+        return { and: defined as PropertyFilter[] };
+      case 'or':
+        return { or: defined as PropertyFilter[] };
+      default:
+        unreachable(type);
+    }
+  },
+
+  /**
+   * Build an `and` [[CompoundFilter]] from multiple arguments, or otherwise
+   * return the only filter.
+   *
+   * Note that the Notion API limits filter depth, but this function does not.
+   */
+  and: (...filters: Array<Filter | undefined | false>): Filter | undefined =>
+    Filter.compound('and', ...filters),
+
+  /**
+   * Build an `or` [[CompoundFilter]] from multiple arguments, or otherwise
+   * return the only filter.
+   *
+   * Note that the Notion API limits filter depth, but this function does not.
+   */
+  or: (...filters: Array<Filter | undefined | false>): Filter | undefined =>
+    Filter.compound('or', ...filters),
+} as const;
+
 /**
  * Compound filters, like `and` or `or`.
  * @category Query
@@ -802,4 +879,160 @@ export function getPropertyValue<P, T>(
       return transform ? transform(propertyValue) : propertyValue;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Database
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * A full database from the Notion API.
+ * @category Database
+ */
+export type Database = Extract<GetDatabaseResponse, { title: unknown }>;
+
+/**
+ * The Notion API may return a "partial" database object if your API token doesn't
+ * have permission for the full database.
+ *
+ * This function confirms that all database data is available.
+ * @category Database
+ */
+export function isFullDatabase(
+  database: GetDatabaseResponse
+): database is Database {
+  return 'title' in database;
+}
+
+/**
+ * The properties that a [[Database]] has.
+ * @category Database
+ */
+export type DatabaseSchema = Database['properties'];
+
+type AnyPropertySchema = DatabaseSchema[string];
+type PropertySchemaType = AnyPropertySchema['type'];
+
+// Verify this is the same as PropertyType.
+// If this is true, we can use PropertyType interchangeably, and avoid exporting
+// another type.
+type _assertPropertyTypeIsPropertySchemaType = [
+  Assert<PropertyType, PropertySchemaType>,
+  Assert<PropertySchemaType, PropertyType>
+];
+
+/**
+ * A property type of the pages in a [[Database]]. Think of this like a column
+ * in a SQL database.
+ *
+ * **WARNING**: the documented name of this is "Property",
+ * **WARNING**: the documented name of page properties is "PropertyValue".
+ * @category Database
+ */
+export type PropertySchema<Type extends PropertyType = PropertyType> = Extract<
+  AnyPropertySchema,
+  { type: Type }
+>;
+
+/**
+ * A partial [[PropertySchema]] that contains at least the `type` field.
+ * Used to create a [[PartialDatabaseSchema]].
+ * @category Database
+ */
+export type PartialPropertySchema<Type extends PropertyType = PropertyType> =
+  Partial<PropertySchema<Type>> & { name: string; type: Type };
+
+/**
+ * A partial [[DatabaseSchema]] that contains at least the `type` field of any defined property.
+ * @category Database
+ */
+export type PartialDatabaseSchema = Record<string, PartialPropertySchema>;
+
+/**
+ * @category Database
+ */
+export type PartialDatabaseSchemaWithOnlyType = Record<
+  string,
+  Partial<PropertySchema> & { type: PropertyType }
+>;
+
+/**
+ * @category Database
+ */
+export type PartialDatabaseSchemaFromSchemaWithOnlyType<
+  T extends PartialDatabaseSchemaWithOnlyType
+> = Assert<
+  PartialDatabaseSchema,
+  {
+    // TODO: does this work better as this?
+    // T[K] extends PartialPropertySchema<T[K]["type"]> ? T[K] : PartialPropertySchema<T[K]["type"]> & T[K]
+    [K in keyof T]: T[K] & PartialPropertySchema<T[K]['type']>;
+  }
+>;
+
+/**
+ * This function helps you infer a concrete subtype of [[PartialDatabaseSchema]]
+ * for use with other APIs in this package. It will fill in missing `name`
+ * fields of each [[PartialPropertySchema]] with the object's key.
+ *
+ * Use the fields of the returned schema to access a page's properties via
+ * [[getPropertyValue]] or [[getProperty]].
+ *
+ * You can check or update your inferred schema against data fetched from the
+ * API with [[compareDatabaseSchema]].
+ *
+ * ```typescript
+ * const mySchema = inferDatabaseSchema({
+ *   Title: { type: 'title' },
+ *   SubTitle: { type: 'rich_text', name: 'Subtitle' },
+ *   PublishedDate: { type: 'date', name: 'Published Date' },
+ *   IsPublished: {
+ *     type: 'checkbox',
+ *     name: 'Show In Production',
+ *     id: 'asdf123',
+ *   },
+ * });
+ *
+ * // inferDatabaseSchema infers a concrete type with the same shape as the input,
+ * // so you can reference properties easily. It also adds `name` to each [[PropertySchema]]
+ * // based on the key name.
+ * console.log(mySchema.Title.name); // "Title"
+ *
+ * // You can use the properties in the inferred schema to access the corresponding
+ * // property value on a Page.
+ * for await (const page of iteratePaginatedAPI(notion.databases.query, {
+ *   database_id,
+ * })) {
+ *   if (isFullPage(page)) {
+ *     const titleRichText = getPropertyValue(page, mySchema.Title);
+ *     console.log('Title: ', richTextAsPlainText(titleRichText));
+ *     const isPublished = getPropertyValue(page, mySchema.IsPublished);
+ *     console.log('Is published: ', isPublished);
+ *   }
+ * }
+ * ```
+ *
+ * @param schema A partial database schema object literal.
+ * @returns The inferred PartialDatabaseSchema subtype.
+ * @category Database
+ */
+export function inferDatabaseSchema<
+  T extends PartialDatabaseSchemaWithOnlyType
+>(schema: T): PartialDatabaseSchemaFromSchemaWithOnlyType<T> {
+  const result = {} as PartialDatabaseSchemaFromSchemaWithOnlyType<T>;
+  for (const [key, propertySchema] of objectEntries(schema)) {
+    type ResultProperty = typeof result[typeof key];
+    // Already has name
+    if ('name' in propertySchema && propertySchema['name'] !== undefined) {
+      result[key] = propertySchema as ResultProperty;
+      continue;
+    }
+
+    // Needs a name
+    result[key] = {
+      ...propertySchema,
+      name: key,
+    } as ResultProperty;
+  }
+  return result;
 }

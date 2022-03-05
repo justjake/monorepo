@@ -386,14 +386,7 @@ export class CMS<
     const visibleFilter = options.showInvisible
       ? undefined
       : this.getVisibleFilter();
-    const slugFilter = this.getSlugFilter(slug);
-    if (visibleFilter && slugFilter) {
-      query.filter = {
-        and: [visibleFilter, slugFilter],
-      };
-    } else {
-      query.filter = slugFilter || visibleFilter;
-    }
+    query.filter = Filter.and(visibleFilter, this.getSlugFilter(slug));
     DEBUG_SLUG('query for slug %s: %o', slug, query.filter);
 
     for await (const page of iteratePaginatedAPI(
@@ -527,13 +520,13 @@ export class CMS<
     ) {
       const { id, name, type: propertyType } = this.config.visible.property;
       const propertyTypeAsCheckbox = propertyType as 'checkbox';
-      const filter: PropertyFilter = {
+      const filter = Filter.property({
         type: propertyTypeAsCheckbox,
         [propertyTypeAsCheckbox]: {
           equals: true,
         },
         property: id || name,
-      };
+      });
       return filter;
     }
   }
