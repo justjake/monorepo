@@ -7,20 +7,22 @@ import {
   iteratePaginatedAPI,
   NotionClient,
   richTextAsPlainText,
-} from "..";
-import { runExample } from "./exampleHelpers";
+} from '..';
+import { getAllProperties } from '../lib/notion-api';
+import { databaseFilterBuilder } from '../lib/query';
+import { runExample } from './exampleHelpers';
 
-console.log("database schema");
+console.log('database schema');
 
-runExample(module, "Database schemas", async ({ notion, database_id }) => {
+runExample(module, 'Database schemas', async ({ notion, database_id, page_id }) => {
   const mySchema = inferDatabaseSchema({
-    Title: { type: "title" },
-    SubTitle: { type: "rich_text", name: "Subtitle" },
-    PublishedDate: { type: "date", name: "Published Date" },
+    Title: { type: 'title' },
+    SubTitle: { type: 'rich_text', name: 'Subtitle' },
+    PublishedDate: { type: 'date', name: 'Published Date' },
     IsPublished: {
-      type: "checkbox",
-      name: "Show In Production",
-      id: "asdf123",
+      type: 'checkbox',
+      name: 'Show In Production',
+      id: 'asdf123',
     },
   });
 
@@ -36,9 +38,9 @@ runExample(module, "Database schemas", async ({ notion, database_id }) => {
   })) {
     if (isFullPage(page)) {
       const titleRichText = getPropertyValue(page, mySchema.Title);
-      console.log("Title: ", richTextAsPlainText(titleRichText));
+      console.log('Title: ', richTextAsPlainText(titleRichText));
       const isPublished = getPropertyValue(page, mySchema.IsPublished);
-      console.log("Is published: ", isPublished);
+      console.log('Is published: ', isPublished);
     }
   }
 
@@ -47,7 +49,21 @@ runExample(module, "Database schemas", async ({ notion, database_id }) => {
   const diffs = diffDatabaseSchemas({ before: mySchema, after: database.properties });
   for (const change of diffs) {
     console.log(
-      databaseSchemaDiffToString(change, { beforeName: "mySchema", afterName: "API database" })
+      databaseSchemaDiffToString(change, { beforeName: 'mySchema', afterName: 'API database' })
     );
+  }
+
+  // Sketch
+  const db = databaseFilterBuilder(mySchema);
+  notion.databases.query({
+    database_id,
+    filter: db.or(db.IsPublished.equals(true), db.PublishedDate.after('2020-01-01')),
+  });
+  db.IsPublished.schema.id;
+
+  const page = await notion.pages.retrieve({ page_id });
+  if (isFullPage(page)) {
+    const props = getAllProperties(page, db.schema);
+    console.log(props.Title);
   }
 });

@@ -8,10 +8,7 @@
 import * as path from 'path';
 import * as fsOld from 'fs';
 import { unreachable } from '@jitl/util';
-import {
-  GetPageResponse,
-  QueryDatabaseParameters,
-} from '@notionhq/client/build/src/api-endpoints';
+import { GetPageResponse, QueryDatabaseParameters } from '@notionhq/client/build/src/api-endpoints';
 import {
   NotionClient,
   PageWithChildren,
@@ -29,6 +26,10 @@ import {
   Sorts,
   visitChildBlocks,
   isFullPage,
+  PartialDatabaseSchema,
+  DatabasePropertyValues,
+  getAllProperties,
+  inferDatabaseSchema,
 } from './notion-api';
 import {
   Asset,
@@ -39,18 +40,10 @@ import {
   getAssetRequestKey,
   performAssetRequest,
 } from './assets';
-import {
-  CacheBehavior,
-  fillCache,
-  getFromCache,
-  NotionObjectIndex,
-} from './cache';
+import { CacheBehavior, fillCache, getFromCache, NotionObjectIndex } from './cache';
 import { Backlinks, buildBacklinks } from './backlinks';
-import {
-  APIErrorCode,
-  APIResponseError,
-  isNotionClientError,
-} from '@notionhq/client/build/src';
+import { APIErrorCode, APIResponseError, isNotionClientError } from '@notionhq/client/build/src';
+import { databaseFilterBuilder, databaseSortBuilder } from './query';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
@@ -72,20 +65,35 @@ export type CMSCustomPropertyPointer<T> = {
  * @category CMS
  * @source
  */
-export interface CMSCustomPropertyDerived<T, CustomFrontmatter> {
+export interface CMSCustomPropertyDerived<
+  T,
+  CustomFrontmatter,
+  Schema extends PartialDatabaseSchema
+> {
   type: 'derived';
   /** Computes the custom property value from the page using a function */
-  derive: (page: Page, cms: CMS<CustomFrontmatter>) => T | Promise<T>;
+  derive: (
+    args: { page: Page /* TODO properties: DatabasePropertyValues<Schema> */ },
+    cms: CMS<CustomFrontmatter, Schema>
+  ) => T | Promise<T>;
 }
+
+/**
+ * Specifies that the CMS should look up a property in the page's schema.
+ */
+export type CMSSchemaPropertyPointer<T, Schema extends PartialDatabaseSchema> = {
+  [K in keyof Schema]: Schema[K] extends PropertyPointerWithOutput<T> ? K : never;
+}[keyof Schema];
 
 /**
  * Specifies how a CMS should get a custom property.
  * @category CMS
  * @source
  */
-export type CMSCustomProperty<T, CustomFrontmatter> =
+export type CMSCustomProperty<T, CustomFrontmatter, Schema extends PartialDatabaseSchema> =
+  | CMSSchemaPropertyPointer<T, Schema>
   | CMSCustomPropertyPointer<T>
-  | CMSCustomPropertyDerived<T, CustomFrontmatter>;
+  | CMSCustomPropertyDerived<T, CustomFrontmatter, Schema>;
 
 /**
  * Configuration for a CMS instance.
@@ -120,7 +128,9 @@ export type CMSCustomProperty<T, CustomFrontmatter> =
  */
 export interface CMSConfig<
   /** The custom frontmatter metadata this CMS should produce */
-  CustomFrontmatter
+  CustomFrontmatter,
+  /** Schema of the database. See [[inferDatabaseSchema]]. */
+  Schema extends PartialDatabaseSchema = never
 > {
   /** Notion API client */
   notion: NotionClient;
@@ -138,9 +148,7 @@ export interface CMSConfig<
    * Note that using a custom slug function may require a full database scan to
    * find a page by a slug.
    */
-  slug:
-    | CMSCustomProperty<RichText | string | undefined, CustomFrontmatter>
-    | undefined;
+  slug: CMSCustomProperty<RichText | string | undefined, CustomFrontmatter, Schema> | undefined;
 
   /**
    * If `false`, the page will be hidden by default from the CMS's APIs.  You
@@ -150,12 +158,18 @@ export interface CMSConfig<
    * If you want to hide pages until a publish date, consider using a Notion
    * formula property.
    */
-  visible: boolean | CMSCustomProperty<boolean, CustomFrontmatter>;
+  visible: boolean | CMSCustomProperty<boolean, CustomFrontmatter, Schema>;
 
   /**
    * Override the page title in frontmatter.
    */
-  title?: CMSCustomProperty<RichText | string, CustomFrontmatter>;
+  title?: CMSCustomProperty<RichText | string, CustomFrontmatter, Schema>;
+
+  /**
+   * If specified, the schema will be available on CMS, and and the properties
+   * will be added to each CMS page.
+   */
+  schema: Schema;
 
   /**
    * This function should return the custom frontmatter from a page. Use it to
@@ -163,20 +177,52 @@ export interface CMSConfig<
    * @returns The custom frontmatter for `page`.
    */
   getFrontmatter: (
-    /**
-     * Page to generate frontmatter for
-     */
-    page: PageWithChildren,
-    /**
-     * Default frontmatter for the page, which is already derived
-     */
-    defaultFrontmatter: CMSDefaultFrontmatter,
+    data: {
+      /**
+       * Page to generate frontmatter for
+       */
+      page: PageWithChildren;
+      /**
+       * Default frontmatter for the page, which is already derived
+       */
+      defaultFrontmatter: CMSDefaultFrontmatter;
+      /**
+       * Schema properties
+       */
+      properties: DatabasePropertyValues<Schema>;
+    },
+
     /**
      * The CMS instance; use this to eg fetch backlinks or assets. Note that
      * accessing this value will disable type inference for the `getFrontmatter`
      * return value; this is a Typescript limitation.
+     *
+     * If you pass a databases schema to the CMS, those properties will be
+     * available to `getFrontmatter`, if you don't need customization you can
+     * just return them:
+     *
+     * ```typescript
+     * new CMS({
+     *   schema: mySchema,
+     *   getFrontmatter: ({ properties }) => properties,
+     * })
+     * ```
+     *
+     * Or, use `getFrontmatter` to extend those properties or add defaults.
+     * For example, convert RichText to plain text:
+     * ```typescript
+     * new CMS({
+     *   schema: { navTitle: { type: 'rich_text' } },
+     *   getFrontmatter: ({ properties }) => ({
+     *     ...properties,
+     *     navTitle: richTextAsPlainText(properties.navTitle),
+     *   })
+     * })
+     * ```
+     *
+     * (That is why this isn't included in the first argument.)
      */
-    cms: CMS<CustomFrontmatter>
+    cms: CMS<CustomFrontmatter, Schema>
   ) => CustomFrontmatter | Promise<CustomFrontmatter>;
 
   /**
@@ -260,9 +306,7 @@ export interface CMSPage<CustomFrontmatter> {
  * ```
  * @category CMS
  */
-export type CMSPageOf<T extends CMS<any>> = T extends CMS<infer Props>
-  ? CMSPage<Props>
-  : never;
+export type CMSPageOf<T extends CMS<any>> = T extends CMS<infer Props> ? CMSPage<Props> : never;
 
 /**
  * Options for [[CMS]] retrieve methods.
@@ -271,6 +315,40 @@ export type CMSPageOf<T extends CMS<any>> = T extends CMS<infer Props>
 export interface CMSRetrieveOptions {
   /** If true, ignore the `visible` property of any retrieved [[CMSPage]]s by always considering them visible. */
   showInvisible?: boolean;
+}
+
+/**
+ * @category CMS
+ */
+export interface CMSScope<CustomFrontmatter> {
+  /** Retrieve a CMS page by ID. */
+  loadPageById(
+    pageId: string,
+    options?: CMSRetrieveOptions
+  ): Promise<CMSPage<CustomFrontmatter> | undefined>;
+
+  /**
+   * Retrieve a CMS page by its slug.
+   *
+   * Note that configuring the CMS to use a property for the slug is more
+   * efficient than using a derived function, which requires a O(n) scan of the
+   * database.
+   */
+  loadPageBySlug(
+    slug: string,
+    options?: CMSRetrieveOptions
+  ): Promise<CMSPage<CustomFrontmatter> | undefined>;
+
+  /**
+   * Query the database, returning all matching [[CMSPage]]s.
+   */
+  query(
+    args?: {
+      filter?: Filter;
+      sorts?: Sorts;
+    },
+    options?: CMSRetrieveOptions
+  ): AsyncIterableIterator<CMSPage<CustomFrontmatter>>;
 }
 
 const DEBUG_SLUG = DEBUG_CMS.extend('slug');
@@ -287,8 +365,11 @@ const DEBUG_SLUG = DEBUG_CMS.extend('slug');
  */
 export class CMS<
   /** The custom frontmatter metadata returned by [[CMSConfig.getFrontmatter]] */
-  CustomFrontmatter
-> {
+  CustomFrontmatter,
+  /** Schema of the database. See [[inferDatabaseSchema]]. */
+  Schema extends PartialDatabaseSchema = never
+> implements CMSScope<CustomFrontmatter>
+{
   /** Indexes links between the pages that have been loaded into memory. */
   public backlinks = new Backlinks();
   /**
@@ -301,8 +382,19 @@ export class CMS<
   public assets = this.config.assets && new AssetCache(this.config.assets);
   /** Private for now, because the semantics may change. */
   private pageContentCache = new PageContentCache(this.config.cache);
+  /** Filter helpers for this CMS's database schema. */
+  public filter = databaseFilterBuilder(this.schema);
+  /** Sort helpers for this CMS's database schema. */
+  public sort = databaseSortBuilder(this.schema);
 
-  constructor(public config: CMSConfig<CustomFrontmatter>) {}
+  /**
+   * See also [[CMSConfig.schema]].
+   */
+  public get schema() {
+    return this.config.schema;
+  }
+
+  constructor(public config: CMSConfig<CustomFrontmatter, Schema>) {}
 
   /** Retrieve a CMS page by ID. */
   async loadPageById(
@@ -310,23 +402,13 @@ export class CMS<
     options: CMSRetrieveOptions = {}
   ): Promise<CMSPage<CustomFrontmatter> | undefined> {
     let page: GetPageResponse;
-    let cached: Awaited<
-      ReturnType<typeof this.pageContentCache.getPageContent>
-    >;
+    let cached: Awaited<ReturnType<typeof this.pageContentCache.getPageContent>>;
     try {
-      cached = await this.pageContentCache.getPageContent(
-        this.config.notion,
-        pageId
-      );
+      cached = await this.pageContentCache.getPageContent(this.config.notion, pageId);
 
-      page =
-        cached.page ||
-        (await this.config.notion.pages.retrieve({ page_id: pageId }));
+      page = cached.page || (await this.config.notion.pages.retrieve({ page_id: pageId }));
     } catch (error) {
-      if (
-        isNotionClientError(error) &&
-        error.code === APIErrorCode.ObjectNotFound
-      ) {
+      if (isNotionClientError(error) && error.code === APIErrorCode.ObjectNotFound) {
         return undefined;
       }
       throw error;
@@ -382,33 +464,24 @@ export class CMS<
     }
 
     const query = this.getBaseQuery();
-    const visibleFilter = options.showInvisible
-      ? undefined
-      : this.getVisibleFilter();
+    const visibleFilter = options.showInvisible ? undefined : this.getVisibleFilter();
     query.filter = Filter.and(visibleFilter, this.getSlugFilter(slug));
     DEBUG_SLUG('query for slug %s: %o', slug, query.filter);
 
-    for await (const page of iteratePaginatedAPI(
-      this.config.notion.databases.query,
-      query
-    )) {
+    for await (const page of iteratePaginatedAPI(this.config.notion.databases.query, query)) {
       if (isFullPage(page)) {
         const pageSlug = await this.getSlug(page);
         DEBUG_SLUG('scan page %s: has slug %s', page.id, pageSlug);
 
         if (pageSlug === slug) {
-          const visible =
-            options.showInvisible || (await this.getVisible(page));
+          const visible = options.showInvisible || (await this.getVisible(page));
 
           if (!visible) {
             DEBUG_SLUG('scan page %s: not visible');
             return undefined;
           }
 
-          const cached = await this.pageContentCache.getPageContent(
-            this.config.notion,
-            page
-          );
+          const cached = await this.pageContentCache.getPageContent(this.config.notion, page);
 
           const cmsPage = await this.buildCMSPage({
             children: cached.children,
@@ -436,20 +509,14 @@ export class CMS<
     const query = this.getDefaultQuery();
     Object.assign(query, args);
 
-    for await (const page of iteratePaginatedAPI(
-      this.config.notion.databases.query,
-      query
-    )) {
+    for await (const page of iteratePaginatedAPI(this.config.notion.databases.query, query)) {
       if (isFullPage(page)) {
         const visible = options.showInvisible || (await this.getVisible(page));
         if (!visible) {
           continue;
         }
 
-        const cached = await this.pageContentCache.getPageContent(
-          this.config.notion,
-          page
-        );
+        const cached = await this.pageContentCache.getPageContent(this.config.notion, page);
 
         const cmsPage = await this.buildCMSPage({
           children: cached.children,
@@ -512,11 +579,28 @@ export class CMS<
     );
   }
 
+  // Work-in-progress
+  public scope(filter: Filter, sorts?: Sorts, options?: CMSRetrieveOptions) {
+    const getScopeQuery = (slug?: string): QueryDatabaseParameters => {
+      const query = this.getDefaultQuery();
+      const filters: PropertyFilter[] = [];
+      filters.push(filter as PropertyFilter);
+      if (query.filter) {
+        filters.push(query.filter as PropertyFilter);
+      }
+      const slugFilter = slug !== undefined && this.getSlugFilter(slug);
+      if (slugFilter) {
+        filters.push(slugFilter);
+      }
+      query.filter = filters.length > 1 ? { and: filters } : filters[0];
+      query.sorts = sorts || query.sorts;
+      return query;
+    };
+    throw 'TODO';
+  }
+
   public getVisibleFilter(): PropertyFilter | undefined {
-    if (
-      typeof this.config.visible === 'object' &&
-      this.config.visible.type === 'property'
-    ) {
+    if (typeof this.config.visible === 'object' && this.config.visible.type === 'property') {
       const { id, name, type: propertyType } = this.config.visible.property;
       const propertyTypeAsCheckbox = propertyType as 'checkbox';
       const filter = Filter.property({
@@ -531,8 +615,12 @@ export class CMS<
   }
 
   public getSlugFilter(slug: string): PropertyFilter | undefined {
-    if (this.config.slug && this.config.slug.type === 'property') {
-      const { id, name, type: propertyType } = this.config.slug.property;
+    if (!this.config.slug) {
+      return;
+    }
+    const slugProperty = resolveCustomPropertyPointer(this.config.slug, this);
+    if (slugProperty) {
+      const { id, name, type: propertyType } = slugProperty;
       const propertyTypeAsRichText = propertyType as 'rich_text';
       const filter: PropertyFilter = {
         type: propertyTypeAsRichText,
@@ -580,8 +668,11 @@ export class CMS<
     };
 
     const frontmatter = await this.config.getFrontmatter(
-      pageWithChildren,
-      defaultFrontmatter,
+      {
+        page: pageWithChildren,
+        defaultFrontmatter,
+        properties: getAllProperties(page, this.schema),
+      },
       this
     );
 
@@ -604,11 +695,7 @@ export class CMS<
 
   private async getTitle(page: PageWithChildren): Promise<RichText | string> {
     if (this.config.title) {
-      const customTitle = await getCustomPropertyValue(
-        this.config.title,
-        page,
-        this
-      );
+      const customTitle = await getCustomPropertyValue(this.config.title, page, this);
       if (customTitle !== undefined) {
         return customTitle;
       }
@@ -621,22 +708,14 @@ export class CMS<
       return this.config.visible;
     }
 
-    const customVisible = await getCustomPropertyValue(
-      this.config.visible,
-      page,
-      this
-    );
+    const customVisible = await getCustomPropertyValue(this.config.visible, page, this);
 
     return Boolean(customVisible);
   }
 
   private async getSlug(page: Page | PageWithChildren): Promise<string> {
     if (this.config.slug) {
-      const customSlug = await getCustomPropertyValue(
-        this.config.slug,
-        page,
-        this
-      );
+      const customSlug = await getCustomPropertyValue(this.config.slug, page, this);
       return richTextAsPlainText(customSlug) || defaultSlug(page);
     }
     return defaultSlug(page);
@@ -653,9 +732,7 @@ export class CMS<
       buildBacklinks([page], this.backlinks);
 
       // Refresh object cache
-      visitChildBlocks(page.children, (block) =>
-        this.notionObjects.addBlock(block, undefined)
-      );
+      visitChildBlocks(page.children, (block) => this.notionObjects.addBlock(block, undefined));
     }
   }
 
@@ -692,13 +769,34 @@ export function defaultSlug(page: Page) {
  * @returns {RichText} The title of `page`, as [[RichText]].
  */
 export function getPageTitle(page: Page): RichText {
-  const title = Object.values(page.properties).find(
-    (prop) => prop.type === 'title'
-  );
+  const title = Object.values(page.properties).find((prop) => prop.type === 'title');
   if (!title || title.type !== 'title') {
     throw new Error(`Page does not have title property: ${page.id}`);
   }
   return title.title;
+}
+
+function resolveCustomPropertyPointer<T, CustomFrontmatter, Schema extends PartialDatabaseSchema>(
+  customProperty: CMSSchemaPropertyPointer<T, Schema> | CMSCustomPropertyPointer<T>,
+  cms: CMS<CustomFrontmatter, Schema>
+): PropertyPointerWithOutput<T>;
+function resolveCustomPropertyPointer<T, CustomFrontmatter, Schema extends PartialDatabaseSchema>(
+  customProperty: CMSCustomProperty<T, CustomFrontmatter, Schema>,
+  cms: CMS<CustomFrontmatter, Schema>
+): PropertyPointerWithOutput<T> | undefined;
+function resolveCustomPropertyPointer<T, CustomFrontmatter, Schema extends PartialDatabaseSchema>(
+  customProperty: CMSCustomProperty<T, CustomFrontmatter, Schema>,
+  cms: CMS<CustomFrontmatter, Schema>
+): PropertyPointerWithOutput<T> | undefined {
+  if (typeof customProperty !== 'object') {
+    return cms.config.schema[customProperty] as any;
+  }
+
+  if (customProperty.type === 'property') {
+    return customProperty.property;
+  }
+
+  return undefined;
 }
 
 /**
@@ -709,16 +807,27 @@ export function getPageTitle(page: Page): RichText {
  * @param cms
  * @returns
  */
-export async function getCustomPropertyValue<T, CustomFrontmatter>(
-  customProperty: CMSCustomProperty<T, CustomFrontmatter>,
+export async function getCustomPropertyValue<
+  T,
+  CustomFrontmatter,
+  Schema extends PartialDatabaseSchema
+>(
+  customProperty: CMSCustomProperty<T, CustomFrontmatter, Schema>,
   page: Page | PageWithChildren,
-  cms: CMS<CustomFrontmatter>
+  cms: CMS<CustomFrontmatter, Schema>
 ): Promise<T | undefined> {
+  if (typeof customProperty !== 'object') {
+    customProperty = {
+      type: 'property',
+      property: resolveCustomPropertyPointer(customProperty, cms),
+    };
+  }
+
   switch (customProperty.type) {
     case 'property':
       return getPropertyValue<T>(page, customProperty.property);
     case 'derived':
-      return customProperty.derive(page, cms);
+      return customProperty.derive({ page }, cms);
     default:
       unreachable(customProperty);
   }
@@ -759,10 +868,8 @@ class PageContentCache implements CacheConfig {
     notion: NotionClient,
     pageIdOrPage: string | Page
   ): Promise<{ children: BlockWithChildren[]; hit: boolean; page?: Page }> {
-    const pageId =
-      typeof pageIdOrPage === 'string' ? pageIdOrPage : pageIdOrPage.id;
-    let newPage: Page | undefined =
-      typeof pageIdOrPage === 'object' ? pageIdOrPage : undefined;
+    const pageId = typeof pageIdOrPage === 'string' ? pageIdOrPage : pageIdOrPage.id;
+    let newPage: Page | undefined = typeof pageIdOrPage === 'object' ? pageIdOrPage : undefined;
 
     const { cached, fromMemory } = await this.getCacheContents(pageId);
 
@@ -851,10 +958,7 @@ class PageContentCache implements CacheConfig {
     return { cached, fromMemory };
   }
 
-  private async storeCacheContents(
-    pageId: string,
-    cacheEntry: PageContentEntry
-  ) {
+  private async storeCacheContents(pageId: string, cacheEntry: PageContentEntry) {
     const cacheFileName = this.getPageCacheFileName(pageId);
     this.cache.set(pageId, cacheEntry);
 
@@ -863,10 +967,7 @@ class PageContentCache implements CacheConfig {
         await this.setupDirectory();
 
         // TODO: implement atomic write as write then move
-        await fs.writeFile(
-          path.join(cacheFileName),
-          JSON.stringify(cacheEntry)
-        );
+        await fs.writeFile(path.join(cacheFileName), JSON.stringify(cacheEntry));
       } catch (error) {
         console.warn('Failed to write cache file', error);
       }
@@ -961,9 +1062,7 @@ class AssetCache {
       DEBUG_ASSETS('asset request not found: %s', assetRequestKey);
       return;
     }
-    fillCache(cacheBehavior, assetHit, () =>
-      this.assetRequestCache.set(assetRequestKey, asset)
-    );
+    fillCache(cacheBehavior, assetHit, () => this.assetRequestCache.set(assetRequestKey, asset));
 
     if (asset.type === 'external' && !this.config.downloadExternalAssets) {
       return asset.external.url;
@@ -1018,21 +1117,35 @@ function examples() {
   const cms = new CMS({
     notion,
     database_id: 'example',
-    slug: undefined,
-    visible: true,
-    getFrontmatter: (page) => ({
-      date: getPropertyValue(page, {
-        name: 'Date',
+    slug: 'productCode',
+    visible: 'publicAccess',
+    schema: inferDatabaseSchema({
+      productCode: {
+        name: 'Product Code',
+        type: 'rich_text',
+      },
+      Subtitle: {
+        type: 'rich_text',
+      },
+      publicAccess: {
+        name: 'Public Access',
+        type: 'checkbox',
+      },
+      Date: {
         type: 'date',
-      }),
-      subtitle: getPropertyValue(
-        page,
-        {
-          name: 'Subtitle',
-          type: 'rich_text',
-        },
-        richTextAsPlainText
-      ),
+      },
     }),
+    getFrontmatter: ({ properties }) => ({
+      ...properties,
+      productCode: richTextAsPlainText(properties.productCode),
+    }),
+  });
+
+  cms.query({
+    filter: cms.filter.and(
+      cms.filter.Date.before('2020-01-01'),
+      cms.filter.publicAccess.equals(true)
+    ),
+    sorts: [cms.sort.last_edited_time.descending],
   });
 }

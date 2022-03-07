@@ -572,7 +572,7 @@ export type Bot = Extract<User, { type: 'bot' }>;
  */
 export type Filter = NonNullable<QueryDatabaseParameters['filter']>;
 
-type AnyPropertyFilter = Extract<Filter, { type?: string }>;
+export type AnyPropertyFilter = Extract<Filter, { type?: string }>;
 
 /**
  * Type of a property filter.
@@ -588,6 +588,26 @@ export type PropertyFilter<Type extends PropertyFilterType = PropertyFilterType>
   AnyPropertyFilter,
   { type?: Type }
 >;
+
+/**
+ * @category Property
+ * @source
+ */
+type PropertyFilterTypeMap = {
+  [K in PropertyType]: PropertyFilter<K>;
+};
+
+/**
+ * Type-level map from property type to the inner filter of that property
+ * @category Property
+ * @source
+ */
+export type PropertyFilterDataMap = {
+  [K in PropertyType]: PropertyFilterTypeMap[K] extends { [key in K]: unknown }
+    ? // @ts-expect-error "Too complex" although, it works?
+      PropertyFilterTypeMap[K][K]
+    : never;
+};
 
 /**
  * Filter builder functions.
@@ -624,14 +644,28 @@ export const Filter = {
     }
 
     switch (type) {
-      case 'and':
-        return { and: defined as PropertyFilter[] };
-      case 'or':
-        return { or: defined as PropertyFilter[] };
+      case 'and': {
+        // Optimization: lift up and combine `and` filter terms.
+        const lifted = defined.filter(Filter.isAnd).flatMap(({ and }) => and);
+        const notLifted = defined.filter((subfilter) => !Filter.isAnd(subfilter));
+        return { and: [...lifted, notLifted] as PropertyFilter[] };
+      }
+      case 'or': {
+        // Optimization: lift up and combine `or` filter terms.
+        const lifted: Filter[] = defined.filter(Filter.isOr).flatMap(({ or }) => or);
+        const notLifted: Filter[] = defined.filter((subfilter) => !Filter.isOr(subfilter));
+        return { or: [...lifted, ...notLifted] as PropertyFilter[] };
+      }
       default:
         unreachable(type);
     }
   },
+
+  /**
+   * @returns True if `filter` is a [[CompoundFilter]].
+   */
+  isCompound: (filter: Filter): filter is CompoundFilter =>
+    Filter.isOr(filter) || Filter.isAnd(filter),
 
   /**
    * Build an `and` [[CompoundFilter]] from multiple arguments, or otherwise
@@ -643,6 +677,11 @@ export const Filter = {
     Filter.compound('and', ...filters),
 
   /**
+   * @returns True if `filter` is an `and` [[CompoundFilter]].
+   */
+  isAnd: (filter: Filter): filter is AndFilter => 'and' in filter,
+
+  /**
    * Build an `or` [[CompoundFilter]] from multiple arguments, or otherwise
    * return the only filter.
    *
@@ -650,6 +689,11 @@ export const Filter = {
    */
   or: (...filters: Array<Filter | undefined | false>): Filter | undefined =>
     Filter.compound('or', ...filters),
+
+  /**
+   * @returns True if `filter` is an `or` [[CompoundFilter]].
+   */
+  isOr: (filter: Filter): filter is OrFilter => 'or' in filter,
 } as const;
 
 /**
@@ -657,16 +701,75 @@ export const Filter = {
  * @category Query
  */
 export type CompoundFilter = Exclude<Filter, PropertyFilter>;
+
+/**
+ * @category Query
+ */
+export type AndFilter = Extract<CompoundFilter, { and: any }>;
+
+/**
+ * @category Query
+ */
+export type OrFilter = Extract<CompoundFilter, { or: any }>;
+
 /**
  * Sorting for a database query.
  * @category Query
  */
 export type Sorts = NonNullable<QueryDatabaseParameters['sorts']>;
+
 /**
  * A single sort in a database query.
  * @category Query
  */
 export type Sort = Sorts[number];
+
+/**
+ * @category Query
+ */
+export type TimestampSort = Extract<Sort, { timestamp: any }>;
+
+/**
+ * @category Query
+ */
+export type PropertySort = Extract<Sort, { property: any }>;
+
+/**
+ * Sort builder functions.
+ * @category Query
+ */
+export const Sort = {
+  property: {
+    ascending: (property: string): PropertySort => ({
+      property,
+      direction: 'ascending',
+    }),
+    descending: (property: string): PropertySort => ({
+      property,
+      direction: 'descending',
+    }),
+  },
+  created_time: {
+    ascending: {
+      timestamp: 'created_time',
+      direction: 'ascending',
+    },
+    descending: {
+      timestamp: 'created_time',
+      direction: 'descending',
+    },
+  },
+  last_edited_time: {
+    ascending: {
+      timestamp: 'last_edited_time',
+      direction: 'ascending',
+    },
+    descending: {
+      timestamp: 'last_edited_time',
+      direction: 'descending',
+    },
+  },
+} as const;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Properties
@@ -938,6 +1041,7 @@ export type PartialPropertySchema<Type extends PropertyType = PropertyType> = Pa
 export type PartialDatabaseSchema = Record<string, PartialPropertySchema>;
 
 /**
+ * Used in [[inferDatabaseSchema]].
  * @category Database
  */
 export type PartialDatabaseSchemaWithOnlyType = Record<
@@ -946,6 +1050,7 @@ export type PartialDatabaseSchemaWithOnlyType = Record<
 >;
 
 /**
+ * Used in [[inferDatabaseSchema]].
  * @category Database
  */
 export type PartialDatabaseSchemaFromSchemaWithOnlyType<
@@ -1331,4 +1436,28 @@ export function databaseSchemaDiffToString<
     default:
       unreachable(diff);
   }
+}
+
+/**
+ * @category Database
+ */
+export type DatabasePropertyValues<T extends PartialDatabaseSchema> = {
+  [K in keyof T]?: PropertyDataMap[T[K]['type']];
+};
+
+/**
+ * Get all properties in a schema from the database.
+ *
+ * @category Property
+ * @category Database
+ */
+export function getAllProperties<Schema extends PartialDatabaseSchema>(
+  page: Page,
+  schema: Schema
+): DatabasePropertyValues<Schema> {
+  const result: DatabasePropertyValues<Schema> = {};
+  for (const [key, property] of objectEntries(schema)) {
+    result[key] = getPropertyValue(page, property) as any;
+  }
+  return result;
 }

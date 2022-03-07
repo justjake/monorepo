@@ -1,11 +1,5 @@
 import { QueryDatabaseParameters } from '@notionhq/client/build/src/api-endpoints';
-import {
-  asyncIterableToArray,
-  isFullPage,
-  iteratePaginatedAPI,
-  NotionClient,
-  Page,
-} from '..';
+import { asyncIterableToArray, isFullPage, iteratePaginatedAPI, NotionClient, Page } from '..';
 
 declare const notion: NotionClient;
 declare const databaseId: string;
@@ -30,9 +24,7 @@ declare const logger: typeof console;
  *   pagination, directly using Notion's sdk types
  * @returns A list of all the results from the database or an empty array
  */
-export const queryAll = async (
-  parameters: QueryDatabaseParameters
-): Promise<Page[]> => {
+const queryAll = async (parameters: QueryDatabaseParameters): Promise<Page[]> => {
   const params: typeof parameters = { ...parameters };
   const resultsWithPartialPages = await asyncIterableToArray(
     // getNotionClient() returns an authenticated instance of the notion SDK

@@ -1,4 +1,4 @@
-import { NotionClient } from "..";
+import { NotionClient } from '..';
 
 let done: Promise<void> = Promise.resolve();
 
@@ -6,6 +6,7 @@ export interface ExampleContext {
   name: string;
   notion: NotionClient;
   database_id: string;
+  page_id: string;
 }
 
 export function runExample(
@@ -25,19 +26,19 @@ export function runExample(
   const exampleContext: ExampleContext = {
     notion,
     name,
-    database_id: process.env.NOTION_DATABASE_ID || "No NOTION_DATABASE_ID",
+    database_id: process.env.NOTION_DATABASE_ID || 'No NOTION_DATABASE_ID',
   };
 
-  console.error("Running example: " + name);
+  console.error('Running example: ' + name);
   done.then(() => {
     done = (async function nextExample() {
       const begin = Date.now();
       try {
         await fn(exampleContext);
         const end = Date.now();
-        console.error(`Example completed: ${name} in`, end - begin, "ms");
+        console.error(`Example completed: ${name} in`, end - begin, 'ms');
       } catch (error) {
-        console.error("Example failed:", name, "error: ", error);
+        console.error('Example failed:', name, 'error: ', error);
       }
     })();
   });
