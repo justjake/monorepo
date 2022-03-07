@@ -394,14 +394,12 @@ type FilterOperatorMap = {
   };
 };
 
-type PropertyFilterBuilder<Type extends PropertyType> = {
+/**
+ * @category Query
+ */
+export type PropertyFilterBuilder<Type extends PropertyType> = { schema: PropertyPointer<Type> } & {
   [K in FilterOperatorType<Type>]: (value: FilterOperatorMap[Type][K]) => PropertyFilter<Type>;
 };
-
-type PropertyFilterBuilderWithSchema<
-  Type extends PropertyType,
-  Schema extends PropertyPointer<Type>
-> = PropertyFilterBuilder<Type> & { schema: Schema };
 
 function buildPropertyFilter<
   Type extends PropertyType,

@@ -30,6 +30,8 @@ import {
   DatabasePropertyValues,
   getAllProperties,
   inferDatabaseSchema,
+  PropertyDataMap,
+  getFormulaPropertyValueData,
 } from './notion-api';
 import {
   Asset,
@@ -43,7 +45,13 @@ import {
 import { CacheBehavior, fillCache, getFromCache, NotionObjectIndex } from './cache';
 import { Backlinks, buildBacklinks } from './backlinks';
 import { APIErrorCode, isNotionClientError } from '@notionhq/client/build/src';
-import { databaseFilterBuilder, databaseSortBuilder, extendQueryParameters } from './query';
+import {
+  databaseFilterBuilder,
+  databaseSortBuilder,
+  extendQueryParameters,
+  PropertyFilterBuilder,
+  propertyFilterBuilder,
+} from './query';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
@@ -98,39 +106,17 @@ export type CMSCustomProperty<T, CustomFrontmatter, Schema extends PartialDataba
 /**
  * Configuration for a CMS instance.
  *
- * The CMS can compute whatever frontmatter you want from the pages it loads.
- * If you're coming from a Markdown static site generator, think of this as the
- * alternative to YAML frontmatter.
- *
- * This is helpful for adding well-typed properties to your pages for rendering,
- * since the Notion API doesn't guarantee that any property exists, and fetching
- * property data can be quite verbose.
- *
- * @example:
- * ```
- * getFrontmatter: (page) => ({
- *   date: getPropertyValue(page, {
- *     name: 'Date',
- *     type: 'date',
- *   }),
- *   subtitle: getPropertyValue(
- *     page,
- *     {
- *       name: 'Subtitle',
- *       type: 'rich_text',
- *     },
- *     richTextAsPlainText
- *   ),
- * }),
- * ```
  * @category CMS
  * @source
  */
 export interface CMSConfig<
   /** The custom frontmatter metadata this CMS should produce */
   CustomFrontmatter,
-  /** Schema of the database. See [[inferDatabaseSchema]]. */
-  Schema extends PartialDatabaseSchema = never
+  /**
+   * Schema of the database. Use [[inferDatabaseSchema]] to avoid writing the
+   * name of each property twice.
+   */
+  Schema extends PartialDatabaseSchema
 > {
   /** Notion API client */
   notion: NotionClient;
@@ -139,26 +125,46 @@ export interface CMSConfig<
   database_id: string;
 
   /**
+   * Schema of the underlying Notion database.
+   *
+   * The CMS will generate filter and sort builders ([[CMS.filter]], [[CMS.sort]])
+   * for each property in the schema.
+   *
+   * Use [[inferDatabaseSchema]] to avoid writing the name of each property twice.
+   *
+   * You can refer to the key names of the schema when specifying special
+   * properties for [[slug]], [[visible]], or [[title]].
+   */
+  schema: Schema;
+
+  /**
    * How should we generate the URL slug for a page, to make a pretty and stable URL?
    * If empty string or undefined, the slug will the page's UUID, without dashes.
    *
-   * Slugs should be unique. It is an error for two different page IDs to have
-   * the same slug.
+   * Slugs should be unique. [[CMS.loadPageBySlug]] will currently return the
+   * first page found with that slug, but this behavior may change in the
+   * future.
    *
-   * Note that using a custom slug function may require a full database scan to
-   * find a page by a slug.
+   * **Note** deriving the slug in-memory on the client by passing a
+   * [[CMSCustomPropertyDerived]] here means that [[CMS.loadPageBySlug]] will be
+   * O(n) over the database.
    */
-  slug: CMSCustomProperty<RichText | string | undefined, CustomFrontmatter, Schema> | undefined;
+  slug:
+    | CMSCustomProperty<
+        RichText | string | undefined | PropertyDataMap['formula'],
+        CustomFrontmatter,
+        Schema
+      >
+    | undefined;
 
   /**
-   * If `false`, the page will be hidden by default from the CMS's APIs.  You
-   * can easily enable all pages by setting `visible: true`, or put the site
-   * into dev-only mode by setting `visible: false`.
-   *
-   * If you want to hide pages until a publish date, consider using a Notion
-   * formula property.
+   * If `false`, the page will be hidden by default from the CMS's APIs. You can
+   * easily enable all pages by setting `visible: true`, or hide everything by
+   * default by setting `visible: false`.
    */
-  visible: boolean | CMSCustomProperty<boolean, CustomFrontmatter, Schema>;
+  visible:
+    | boolean
+    | CMSCustomProperty<boolean | PropertyDataMap['formula'], CustomFrontmatter, Schema>;
 
   /**
    * Override the page title in frontmatter.
@@ -166,14 +172,35 @@ export interface CMSConfig<
   title?: CMSCustomProperty<RichText | string, CustomFrontmatter, Schema>;
 
   /**
-   * If specified, the schema will be available on CMS, and and the properties
-   * will be added to each CMS page.
-   */
-  schema: Schema;
-
-  /**
    * This function should return the custom frontmatter from a page. Use it to
    * read properties from the page and return them in a well-typed way.
+   *
+   * The CMS can compute whatever frontmatter you want from the pages it loads.
+   * If you're coming from a Markdown static site generator, think of this as the
+   * alternative to YAML frontmatter.
+   *
+   * This is helpful for adding well-typed properties to your pages for rendering,
+   * since the Notion API doesn't guarantee that any property exists, and fetching
+   * property data can be quite verbose.
+   *
+   * @example:
+   * ```
+   * getFrontmatter: (page) => ({
+   *   date: getPropertyValue(page, {
+   *     name: 'Date',
+   *     type: 'date',
+   *   }),
+   *   subtitle: getPropertyValue(
+   *     page,
+   *     {
+   *       name: 'Subtitle',
+   *       type: 'rich_text',
+   *     },
+   *     richTextAsPlainText
+   *   ),
+   * }),
+   * ```
+   *
    * @returns The custom frontmatter for `page`.
    */
   getFrontmatter: (
@@ -400,12 +427,12 @@ export class CMS<
   public pages = new Map<string, CMSPage<CustomFrontmatter>>();
   /** Asset downloader, requires `assets` configuration */
   public assets = this.config.assets && new AssetCache(this.config.assets);
-  /** Private for now, because the semantics may change. */
-  private pageContentCache = new PageContentCache(this.config.cache);
   /** Filter helpers for this CMS's database schema. */
   public filter = databaseFilterBuilder(this.schema);
   /** Sort helpers for this CMS's database schema. */
   public sort = databaseSortBuilder(this.schema);
+  /** Resolves [[CMSConfig.slug]] and [[CMSConfig.visible]] config options to property pointers  */
+  public propertyResolver: CMSPropertyResolver<CustomFrontmatter, Schema>;
 
   /**
    * Query the database, returning all matching [[CMSPage]]s.
@@ -413,6 +440,9 @@ export class CMS<
    * database, such as respecting `visible` if configured.
    */
   public query: CMSScope<CustomFrontmatter>['query'];
+
+  /** Private for now, because the semantics may change. */
+  private pageContentCache = new PageContentCache(this.config.cache);
 
   /**
    * See also [[CMSConfig.schema]].
@@ -424,6 +454,7 @@ export class CMS<
   constructor(public config: CMSConfig<CustomFrontmatter, Schema>) {
     const defaultScope = this.scope({});
     this.query = defaultScope.query;
+    this.propertyResolver = new CMSPropertyResolver(this);
   }
 
   /** Retrieve a CMS page by ID. */
@@ -683,6 +714,19 @@ export class CMS<
     return childScope;
   }
 
+  private customPropertyFilters: {
+    slug?: PropertyFilterBuilder<
+      NonNullable<
+        ReturnType<CMSPropertyResolver<CustomFrontmatter, Schema>['resolveSlugPropertyPointer']>
+      >['type']
+    >;
+    visible?: PropertyFilterBuilder<
+      NonNullable<
+        ReturnType<CMSPropertyResolver<CustomFrontmatter, Schema>['resolveVisiblePropertyPointer']>
+      >['type']
+    >;
+  } = {};
+
   /**
    * If `config.visible` is a property pointer, return a filter for `visibleProperty = isVisible`.
    * Note that you must also set `showInvisible: true` for query APIs to return invisible pages,
@@ -696,18 +740,22 @@ export class CMS<
       return undefined;
     }
 
-    const visibleProperty = resolveCustomPropertyPointer(this.config.visible, this);
-    if (visibleProperty) {
-      const { id, name, type: propertyType } = visibleProperty;
-      const propertyTypeAsCheckbox = propertyType as 'checkbox';
-      const filter = Filter.property({
-        type: propertyTypeAsCheckbox,
-        [propertyTypeAsCheckbox]: {
-          equals: isVisible,
-        },
-        property: id || name,
-      });
-      return filter;
+    if (!this.customPropertyFilters.visible) {
+      const property = this.propertyResolver.resolveVisiblePropertyPointer();
+      if (property) {
+        this.customPropertyFilters.visible = propertyFilterBuilder(property);
+      }
+    }
+
+    if (this.customPropertyFilters.visible) {
+      switch (this.customPropertyFilters.visible.schema.type) {
+        case 'formula':
+          return this.customPropertyFilters.visible.checkbox({
+            equals: isVisible,
+          });
+        default:
+          return this.customPropertyFilters.visible.equals(isVisible);
+      }
     }
   }
 
@@ -717,20 +765,25 @@ export class CMS<
    */
   public getSlugEqualsFilter(slug: string): PropertyFilter | undefined {
     if (!this.config.slug) {
-      return;
+      return undefined;
     }
-    const slugProperty = resolveCustomPropertyPointer(this.config.slug, this);
-    if (slugProperty) {
-      const { id, name, type: propertyType } = slugProperty;
-      const propertyTypeAsRichText = propertyType as 'rich_text';
-      const filter: PropertyFilter = {
-        type: propertyTypeAsRichText,
-        property: id || name,
-        [propertyTypeAsRichText]: {
-          equals: slug,
-        },
-      };
-      return filter;
+
+    if (!this.customPropertyFilters.slug) {
+      const property = this.propertyResolver.resolveSlugPropertyPointer();
+      if (property) {
+        this.customPropertyFilters.slug = propertyFilterBuilder(property);
+      }
+    }
+
+    if (this.customPropertyFilters.slug) {
+      switch (this.customPropertyFilters.slug.schema.type) {
+        case 'formula':
+          return this.customPropertyFilters.slug.string({
+            equals: slug,
+          });
+        default:
+          return this.customPropertyFilters.slug.equals(slug);
+      }
     }
   }
 
@@ -807,6 +860,10 @@ export class CMS<
     }
 
     const customVisible = await getCustomPropertyValue(this.config.visible, page, this);
+    if (typeof customVisible === 'object') {
+      // Formula return type
+      return Boolean(getFormulaPropertyValueData(customVisible));
+    }
 
     return Boolean(customVisible);
   }
@@ -814,6 +871,10 @@ export class CMS<
   private async getSlug(page: Page | PageWithChildren): Promise<string> {
     if (this.config.slug) {
       const customSlug = await getCustomPropertyValue(this.config.slug, page, this);
+      if (typeof customSlug === 'object' && 'type' in customSlug) {
+        // Formula return type
+        return String(getFormulaPropertyValueData(customSlug) || '');
+      }
       return richTextAsPlainText(customSlug) || defaultSlug(page);
     }
     return defaultSlug(page);
@@ -838,6 +899,39 @@ export class CMS<
 ////////////////////////////////////////////////////////////////////////////////
 // Custom Properties
 ////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Resolve [[CMSConfig]] options to property pointers.
+ * This is implemented as a separate class from [[CMS]] to improve type inference.
+ */
+export class CMSPropertyResolver<CustomFrontmatter, Schema extends PartialDatabaseSchema> {
+  config: CMSConfig<CustomFrontmatter, Schema>;
+  constructor(private cms: CMS<CustomFrontmatter, Schema>) {
+    this.config = cms.config;
+  }
+
+  /** If `config.slug` is a property pointer, returns it as a [[PropertyPointer]]. */
+  resolveSlugPropertyPointer() {
+    if (this.config.slug) {
+      return resolveCustomPropertyPointer(this.config.slug, this.cms);
+    }
+  }
+
+  /** If `config.visible` is a property pointer, returns it as a [[PropertyPointer]]. */
+  resolveVisiblePropertyPointer() {
+    if (typeof this.config.visible === 'boolean') {
+      return undefined;
+    }
+
+    return resolveCustomPropertyPointer(this.config.visible, this.cms);
+  }
+
+  resolveCustomPropertyPointer<T>(
+    customProperty: CMSCustomProperty<T, CustomFrontmatter, Schema>
+  ): PropertyPointerWithOutput<T> | undefined {
+    return resolveCustomPropertyPointer(customProperty, this.cms);
+  }
+}
 
 /**
  * @category CMS
@@ -931,7 +1025,7 @@ interface PageContentEntry {
   children: BlockWithChildren[];
 }
 
-type CacheConfig = NonNullable<CMSConfig<unknown>['cache']>;
+type CacheConfig = NonNullable<CMSConfig<unknown, PartialDatabaseSchema>['cache']>;
 
 class PageContentCache implements CacheConfig {
   constructor(public config: CacheConfig = {}) {}
@@ -1085,7 +1179,7 @@ class PageContentCache implements CacheConfig {
 
 const DEBUG_ASSETS = DEBUG_CMS.extend('assets');
 
-type AssetConfig = NonNullable<CMSConfig<unknown>['assets']>;
+type AssetConfig = NonNullable<CMSConfig<unknown, PartialDatabaseSchema>['assets']>;
 
 class AssetCache {
   constructor(public config: AssetConfig) {}

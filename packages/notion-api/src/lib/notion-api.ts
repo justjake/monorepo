@@ -841,6 +841,31 @@ export function getPropertyData<Type extends PropertyType>(
   return (property as any)[property.type];
 }
 
+type AnyFormulaPropertyValue = PropertyDataMap['formula'];
+
+/**
+ * @category Property
+ */
+export type FormulaPropertyValueType = AnyFormulaPropertyValue['type'];
+
+/**
+ * @category Property
+ */
+export type FormulaPropertyValue<Type extends FormulaPropertyValueType = FormulaPropertyValueType> =
+  Extract<AnyFormulaPropertyValue, { type: Type }>;
+
+export type FormulaPropertyValueData = string | number | boolean | DateResponse | null;
+
+/**
+ * @category Property
+ */
+export function getFormulaPropertyValueData(
+  propertyValue: FormulaPropertyValue
+): FormulaPropertyValueData {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (propertyValue as any)[propertyValue.type] ?? null;
+}
+
 /**
  * A pointer to a property in a Notion API page. The property will by looked up
  * by `name`, or `id` if given.
