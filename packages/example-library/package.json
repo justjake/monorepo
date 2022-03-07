@@ -1,0 +1,8 @@
+{
+  "name": "@jitl/example-library",
+  "version": "0.0.1",
+  "dependencies": {
+    "@stripe/react-stripe-js": "1.2.0",
+    "@stripe/stripe-js": "1.11.0"
+  }
+}

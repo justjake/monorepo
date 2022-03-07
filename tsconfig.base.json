@@ -17,6 +17,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@jitl/example-library": ["packages/example-library/src/index.ts"],
       "@jitl/notion-api": ["packages/notion-api/src/index.ts"],
       "@jitl/pinch-zoom": ["packages/pinch-zoom/src/index.ts"],
       "@jitl/state": ["packages/state/src/index.ts"],

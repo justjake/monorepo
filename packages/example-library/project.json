@@ -1,0 +1,34 @@
+{
+  "root": "packages/example-library",
+  "sourceRoot": "packages/example-library/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/example-library/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["coverage/packages/example-library"],
+      "options": {
+        "jestConfig": "packages/example-library/jest.config.js",
+        "passWithNoTests": true
+      }
+    },
+    "build": {
+      "executor": "@nrwl/node:package",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/example-library",
+        "tsConfig": "packages/example-library/tsconfig.lib.json",
+        "packageJson": "packages/example-library/package.json",
+        "main": "packages/example-library/src/index.ts",
+        "assets": ["packages/example-library/*.md"]
+      }
+    }
+  },
+  "tags": []
+}

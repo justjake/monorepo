@@ -1,6 +1,7 @@
 {
   "version": 2,
   "projects": {
+    "example-library": "packages/example-library",
     "notion-api": "packages/notion-api",
     "pinch-zoom": "packages/pinch-zoom",
     "playground": "packages/playground",
