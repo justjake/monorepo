@@ -42,8 +42,8 @@ import {
 } from './assets';
 import { CacheBehavior, fillCache, getFromCache, NotionObjectIndex } from './cache';
 import { Backlinks, buildBacklinks } from './backlinks';
-import { APIErrorCode, APIResponseError, isNotionClientError } from '@notionhq/client/build/src';
-import { databaseFilterBuilder, databaseSortBuilder } from './query';
+import { APIErrorCode, isNotionClientError } from '@notionhq/client/build/src';
+import { databaseFilterBuilder, databaseSortBuilder, extendQueryParameters } from './query';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
@@ -318,27 +318,37 @@ export interface CMSRetrieveOptions {
 }
 
 /**
+ * Options of [[CMS.getQueryParameters]]
+ * @category CMS
+ */
+export interface CMSQueryParametersOptions extends CMSRetrieveOptions {
+  /** Get the query used for retrieving this slug */
+  slug?: string;
+}
+
+/**
+ * Options of [[CMS.scope]], [[CMSScope.scope]]
+ * @category CMS
+ */
+export interface CMSScopeOptions extends CMSRetrieveOptions {
+  /** Apply these filters to all queries made inside the scope */
+  filter?: Filter;
+  /** Apply these sorts to all queries made inside the scope. These take precedence over but do not remove the parent scope's sorts. */
+  sorts?: Sorts;
+}
+
+/**
+ * A query scope inside of a [[CMS]].
+ * A scope is a way to save and compose common query options.
+ *
+ * ```typescript
+ * const invisibleScope = cms.scope({ filter: cms.getVisibleEqualsFilter(false), showInvisible: true })
+ * const recentlyChanged = invisibleScope.query({ filter: cms.filter.updatedTime.last_week({}) })
+ * ```
+ *
  * @category CMS
  */
 export interface CMSScope<CustomFrontmatter> {
-  /** Retrieve a CMS page by ID. */
-  loadPageById(
-    pageId: string,
-    options?: CMSRetrieveOptions
-  ): Promise<CMSPage<CustomFrontmatter> | undefined>;
-
-  /**
-   * Retrieve a CMS page by its slug.
-   *
-   * Note that configuring the CMS to use a property for the slug is more
-   * efficient than using a derived function, which requires a O(n) scan of the
-   * database.
-   */
-  loadPageBySlug(
-    slug: string,
-    options?: CMSRetrieveOptions
-  ): Promise<CMSPage<CustomFrontmatter> | undefined>;
-
   /**
    * Query the database, returning all matching [[CMSPage]]s.
    */
@@ -349,6 +359,16 @@ export interface CMSScope<CustomFrontmatter> {
     },
     options?: CMSRetrieveOptions
   ): AsyncIterableIterator<CMSPage<CustomFrontmatter>>;
+
+  /**
+   * @returns A child scope within this scope.
+   */
+  scope(options: CMSScopeOptions): CMSScope<CustomFrontmatter>;
+
+  /**
+   * @returns the Notion API QueryDatabaseParameters used as the basis for queries made by this object.
+   */
+  getQueryParameters(options: CMSQueryParametersOptions): QueryDatabaseParameters;
 }
 
 const DEBUG_SLUG = DEBUG_CMS.extend('slug');
@@ -388,13 +408,23 @@ export class CMS<
   public sort = databaseSortBuilder(this.schema);
 
   /**
+   * Query the database, returning all matching [[CMSPage]]s.
+   * Filter and sort parameters will be combined with the default ones for the
+   * database, such as respecting `visible` if configured.
+   */
+  public query: CMSScope<CustomFrontmatter>['query'];
+
+  /**
    * See also [[CMSConfig.schema]].
    */
   public get schema() {
     return this.config.schema;
   }
 
-  constructor(public config: CMSConfig<CustomFrontmatter, Schema>) {}
+  constructor(public config: CMSConfig<CustomFrontmatter, Schema>) {
+    const defaultScope = this.scope({});
+    this.query = defaultScope.query;
+  }
 
   /** Retrieve a CMS page by ID. */
   async loadPageById(
@@ -418,16 +448,16 @@ export class CMS<
       return undefined;
     }
 
+    const visible = options.showInvisible || (await this.getVisible(page));
+    if (!visible) {
+      return undefined;
+    }
+
     const cmsPage = await this.buildCMSPage({
       children: cached.children,
       page,
       reIndexChildren: !cached.hit,
     });
-
-    const visible = options.showInvisible || cmsPage.frontmatter.visible;
-    if (!visible) {
-      return undefined;
-    }
 
     return cmsPage;
   }
@@ -447,14 +477,14 @@ export class CMS<
     // so we can just load by ID.
     if (this.config.slug === undefined) {
       DEBUG_SLUG('not configured, loading by ID: %s', slug);
-      return this.loadPageById(slug);
+      return this.loadPageById(slug, options);
     }
 
     // Optimization - empty slugs fall back to page ID, so maybe it's easier to load by ID.
     if (slug.length === 32) {
       try {
         DEBUG_SLUG('length = 32, try loading by ID: %s', slug);
-        const byId = this.loadPageById(slug);
+        const byId = await this.loadPageById(slug, options);
         if (byId) {
           return byId;
         }
@@ -463,12 +493,32 @@ export class CMS<
       }
     }
 
-    const query = this.getBaseQuery();
-    const visibleFilter = options.showInvisible ? undefined : this.getVisibleFilter();
-    query.filter = Filter.and(visibleFilter, this.getSlugFilter(slug));
-    DEBUG_SLUG('query for slug %s: %o', slug, query.filter);
+    return this.findPageWithSlugRaw({
+      slug,
+      options,
+      queryParameters: this.getQueryParameters({
+        ...options,
+        slug,
+      }),
+    });
+  }
 
-    for await (const page of iteratePaginatedAPI(this.config.notion.databases.query, query)) {
+  /**
+   * *Raw* - prefer to use [[loadPageBySlug]] instead.
+   * Scan the requests of `queryParameters` for the first page with the given slug.
+   */
+  async findPageWithSlugRaw(args: {
+    slug: string;
+    options: CMSRetrieveOptions;
+    queryParameters: QueryDatabaseParameters;
+  }): Promise<CMSPage<CustomFrontmatter> | undefined> {
+    const { slug, options, queryParameters } = args;
+
+    DEBUG_SLUG('query for slug %s: %o', slug, queryParameters.filter);
+    for await (const page of iteratePaginatedAPI(
+      this.config.notion.databases.query,
+      queryParameters
+    )) {
       if (isFullPage(page)) {
         const pageSlug = await this.getSlug(page);
         DEBUG_SLUG('scan page %s: has slug %s', page.id, pageSlug);
@@ -497,19 +547,18 @@ export class CMS<
   }
 
   /**
-   * Query the database, returning all matching [[CMSPage]]s.
+   * *Raw* - prefer to use [[query]] instead.
+   * Scan the results of `queryParameters` and return each page as a [[CMSPage]].
    */
-  async *query(
-    args: {
-      filter?: Filter;
-      sorts?: Sorts;
-    } = {},
-    options: CMSRetrieveOptions = {}
-  ): AsyncIterableIterator<CMSPage<CustomFrontmatter>> {
-    const query = this.getDefaultQuery();
-    Object.assign(query, args);
-
-    for await (const page of iteratePaginatedAPI(this.config.notion.databases.query, query)) {
+  async *queryRaw(args: {
+    queryParameters: QueryDatabaseParameters;
+    options: CMSRetrieveOptions;
+  }): AsyncIterableIterator<CMSPage<CustomFrontmatter>> {
+    const { queryParameters, options } = args;
+    for await (const page of iteratePaginatedAPI(
+      this.config.notion.databases.query,
+      queryParameters
+    )) {
       if (isFullPage(page)) {
         const visible = options.showInvisible || (await this.getVisible(page));
         if (!visible) {
@@ -517,7 +566,6 @@ export class CMS<
         }
 
         const cached = await this.pageContentCache.getPageContent(this.config.notion, page);
-
         const cmsPage = await this.buildCMSPage({
           children: cached.children,
           page,
@@ -527,6 +575,17 @@ export class CMS<
         yield cmsPage;
       }
     }
+  }
+
+  getQueryParameters(args: CMSQueryParametersOptions = {}): QueryDatabaseParameters {
+    const { slug, showInvisible } = args;
+    const visibleFilter = showInvisible ? undefined : this.getVisibleEqualsFilter(true);
+    const slugFilter = slug === undefined ? undefined : this.getSlugEqualsFilter(slug);
+    return {
+      database_id: this.config.database_id,
+      filter: this.filter.and(visibleFilter, slugFilter),
+      sorts: this.getDefaultSorts(),
+    };
   }
 
   async downloadAssets(cmsPage: CMSPage<CustomFrontmatter>): Promise<void> {
@@ -579,34 +638,72 @@ export class CMS<
     );
   }
 
-  // Work-in-progress
-  public scope(filter: Filter, sorts?: Sorts, options?: CMSRetrieveOptions) {
-    const getScopeQuery = (slug?: string): QueryDatabaseParameters => {
-      const query = this.getDefaultQuery();
-      const filters: PropertyFilter[] = [];
-      filters.push(filter as PropertyFilter);
-      if (query.filter) {
-        filters.push(query.filter as PropertyFilter);
-      }
-      const slugFilter = slug !== undefined && this.getSlugFilter(slug);
-      if (slugFilter) {
-        filters.push(slugFilter);
-      }
-      query.filter = filters.length > 1 ? { and: filters } : filters[0];
-      query.sorts = sorts || query.sorts;
-      return query;
-    };
-    throw 'TODO';
+  public scope(args: CMSScopeOptions): CMSScope<CustomFrontmatter> {
+    return this.createScope({
+      ...args,
+      parentScope: this,
+    });
   }
 
-  public getVisibleFilter(): PropertyFilter | undefined {
-    if (typeof this.config.visible === 'object' && this.config.visible.type === 'property') {
-      const { id, name, type: propertyType } = this.config.visible.property;
+  private createScope(
+    args: {
+      parentScope: CMSScope<CustomFrontmatter>;
+    } & CMSScopeOptions
+  ): CMSScope<CustomFrontmatter> {
+    const { parentScope, filter, sorts, ...retrieveOptions } = args;
+
+    const getQueryParameters = (args: CMSQueryParametersOptions = {}) =>
+      extendQueryParameters(
+        parentScope.getQueryParameters({
+          ...retrieveOptions,
+          ...args,
+        }),
+        {
+          filter,
+          sorts,
+        }
+      );
+
+    const childScope: CMSScope<CustomFrontmatter> = {
+      query: (args, options) =>
+        this.queryRaw({
+          queryParameters: extendQueryParameters(getQueryParameters(options), args || {}),
+          options: options || {},
+        }),
+
+      getQueryParameters,
+
+      scope: (args) =>
+        this.createScope({
+          ...args,
+          parentScope: childScope,
+        }),
+    };
+
+    return childScope;
+  }
+
+  /**
+   * If `config.visible` is a property pointer, return a filter for `visibleProperty = isVisible`.
+   * Note that you must also set `showInvisible: true` for query APIs to return invisible pages,
+   * otherwise they will be filtered out in-memory.
+   *
+   * This filter is added automatically to queries in the CMS and
+   * [[getQueryParameters]] unless their `showInvisible` is true.
+   */
+  public getVisibleEqualsFilter(isVisible: boolean): PropertyFilter | undefined {
+    if (typeof this.config.visible === 'boolean') {
+      return undefined;
+    }
+
+    const visibleProperty = resolveCustomPropertyPointer(this.config.visible, this);
+    if (visibleProperty) {
+      const { id, name, type: propertyType } = visibleProperty;
       const propertyTypeAsCheckbox = propertyType as 'checkbox';
       const filter = Filter.property({
         type: propertyTypeAsCheckbox,
         [propertyTypeAsCheckbox]: {
-          equals: true,
+          equals: isVisible,
         },
         property: id || name,
       });
@@ -614,7 +711,11 @@ export class CMS<
     }
   }
 
-  public getSlugFilter(slug: string): PropertyFilter | undefined {
+  /**
+   * If `config.slug` is a property pointer, return a filter for `slugProperty = slug`.
+   * This filter is used by [[loadPageBySlug]] and possibly by [[getQueryParameters]].
+   */
+  public getSlugEqualsFilter(slug: string): PropertyFilter | undefined {
     if (!this.config.slug) {
       return;
     }
@@ -633,11 +734,8 @@ export class CMS<
     }
   }
 
-  public getDefaultQuery(): QueryDatabaseParameters {
-    const base = this.getBaseQuery();
-    const visible = this.getVisibleFilter();
-    base.filter = visible;
-    return base;
+  public getDefaultSorts(): Sorts {
+    return [this.sort.created_time.descending];
   }
 
   private async buildCMSPage(args: {
@@ -734,18 +832,6 @@ export class CMS<
       // Refresh object cache
       visitChildBlocks(page.children, (block) => this.notionObjects.addBlock(block, undefined));
     }
-  }
-
-  private getBaseQuery(): QueryDatabaseParameters {
-    return {
-      database_id: this.config.database_id,
-      sorts: [
-        {
-          timestamp: 'created_time',
-          direction: 'descending',
-        },
-      ],
-    };
   }
 }
 
@@ -1147,5 +1233,10 @@ function examples() {
       cms.filter.publicAccess.equals(true)
     ),
     sorts: [cms.sort.last_edited_time.descending],
+  });
+
+  const drafts = cms.scope({
+    filter: cms.getVisibleEqualsFilter(false),
+    showInvisible: true,
   });
 }

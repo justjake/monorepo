@@ -18,19 +18,14 @@ import {
   TimestampSort,
 } from './notion-api';
 
-// class Query<T extends PartialDatabaseSchema> {
-//   constructor(public schema: T) {}
-
-//   and = Filter.and;
-//   or = Filter.or;
-// }
-
 ////////////////////////////////////////////////////////////////////////////////
 // Helper types
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Warning: intersecting too many things may break
+ * Warning: intersecting too many things may break, especially with `keyof`,
+ * which often collapses key types to just `string | number | symbol` if the
+ * type is too complex.
  */
 type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any
   ? R
@@ -51,13 +46,13 @@ type FilterOperatorTypeMap<T> = {
 type IdRequest = string;
 
 /**
- * @category Filter
+ * @category Query
  */
 export type ExistenceFilterOperator = { is_empty: true } | { is_not_empty: true };
 
 /**
  * Runtime type information for [[ExistenceFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const EXISTENCE_FILTER_OPERATORS: FilterOperatorTypeMap<ExistenceFilterOperator> = {
   is_empty: true,
@@ -75,7 +70,7 @@ const CONTAINS_OPERATORS = {
 } as const;
 
 /**
- * @category Filter
+ * @category Query
  */
 export type TextFilterOperator =
   | { equals: string }
@@ -88,7 +83,7 @@ export type TextFilterOperator =
 
 /**
  * Runtime type information for [[TextFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const TEXT_FILTER_OPERATORS: FilterOperatorTypeMap<TextFilterOperator> = {
   ...EXISTENCE_FILTER_OPERATORS,
@@ -99,7 +94,7 @@ export const TEXT_FILTER_OPERATORS: FilterOperatorTypeMap<TextFilterOperator> = 
 };
 
 /**
- * @category Filter
+ * @category Query
  */
 export type NumberFilterOperator =
   | { equals: number }
@@ -112,7 +107,7 @@ export type NumberFilterOperator =
 
 /**
  * Runtime type information for [[NumberFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const NUMBER_FILTER_OPERATORS: FilterOperatorTypeMap<NumberFilterOperator> = {
   ...EXISTENCE_FILTER_OPERATORS,
@@ -124,19 +119,19 @@ export const NUMBER_FILTER_OPERATORS: FilterOperatorTypeMap<NumberFilterOperator
 };
 
 /**
- * @category Filter
+ * @category Query
  */
 export type CheckboxFilterOperator = { equals: boolean } | { does_not_equal: boolean };
 
 /**
  * Runtime type information for [[NumberFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const CHECKBOX_FILTER_OPERATORS: FilterOperatorTypeMap<CheckboxFilterOperator> =
   EQUALITY_OPERATORS;
 
 /**
- * @category Filter
+ * @category Query
  */
 export type SelectFilterOperator =
   | { equals: string }
@@ -145,7 +140,7 @@ export type SelectFilterOperator =
 
 /**
  * Runtime type information for [[SelectFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const SELECT_FILTER_OPERATORS: FilterOperatorTypeMap<SelectFilterOperator> = {
   ...EXISTENCE_FILTER_OPERATORS,
@@ -153,7 +148,7 @@ export const SELECT_FILTER_OPERATORS: FilterOperatorTypeMap<SelectFilterOperator
 };
 
 /**
- * @category Filter
+ * @category Query
  */
 export type MultiSelectFilterOperator =
   | { contains: string }
@@ -162,7 +157,7 @@ export type MultiSelectFilterOperator =
 
 /**
  * Runtime type information for [[MultiSelectFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const MULTI_SELECT_FILTER_OPERATORS: FilterOperatorTypeMap<MultiSelectFilterOperator> = {
   ...EXISTENCE_FILTER_OPERATORS,
@@ -170,7 +165,7 @@ export const MULTI_SELECT_FILTER_OPERATORS: FilterOperatorTypeMap<MultiSelectFil
 };
 
 /**
- * @category Filter
+ * @category Query
  */
 export type DateFilterOperator =
   | { equals: string }
@@ -188,7 +183,7 @@ export type DateFilterOperator =
 
 /**
  * Runtime type information for [[DateFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const DATE_FILTER_OPERATORS: FilterOperatorTypeMap<DateFilterOperator> = {
   ...EXISTENCE_FILTER_OPERATORS,
@@ -206,7 +201,7 @@ export const DATE_FILTER_OPERATORS: FilterOperatorTypeMap<DateFilterOperator> = 
 };
 
 /**
- * @category Filter
+ * @category Query
  */
 export type PeopleFilterOperator =
   | { contains: IdRequest }
@@ -215,7 +210,7 @@ export type PeopleFilterOperator =
 
 /**
  * Runtime type information for [[PeopleFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const PEOPLE_FILTER_OPERATORS: FilterOperatorTypeMap<PeopleFilterOperator> = {
   ...EXISTENCE_FILTER_OPERATORS,
@@ -223,7 +218,7 @@ export const PEOPLE_FILTER_OPERATORS: FilterOperatorTypeMap<PeopleFilterOperator
 };
 
 /**
- * @category Filter
+ * @category Query
  */
 export type RelationFilterOperator =
   | { contains: IdRequest }
@@ -232,7 +227,7 @@ export type RelationFilterOperator =
 
 /**
  * Runtime type information for [[RelationFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const RELATION_FILTER_OPERATORS: FilterOperatorTypeMap<RelationFilterOperator> = {
   ...EXISTENCE_FILTER_OPERATORS,
@@ -240,7 +235,7 @@ export const RELATION_FILTER_OPERATORS: FilterOperatorTypeMap<RelationFilterOper
 };
 
 /**
- * @category Filter
+ * @category Query
  */
 export type FormulaFilterOperator =
   | { string: TextFilterOperator }
@@ -255,7 +250,7 @@ export type FormulaFilterOperator =
 
 /**
  * Runtime type information for [[FormulaFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const FORMULA_FILTER_OPERATORS: FilterOperatorTypeMap<FormulaFilterOperator> = {
   string: true,
@@ -265,7 +260,7 @@ export const FORMULA_FILTER_OPERATORS: FilterOperatorTypeMap<FormulaFilterOperat
 } as const;
 
 /**
- * @category Filter
+ * @category Query
  */
 export type RollupSubfilterOperator =
   | { rich_text: TextFilterOperator }
@@ -279,7 +274,7 @@ export type RollupSubfilterOperator =
   | { files: ExistenceFilterOperator };
 
 /**
- * @category Filter
+ * @category Query
  */
 export type RollupFilterOperator =
   | { any: RollupSubfilterOperator }
@@ -290,7 +285,7 @@ export type RollupFilterOperator =
 
 /**
  * Runtime type information for [[RollupFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const ROLLUP_FILTER_OPERATORS: FilterOperatorTypeMap<RollupFilterOperator> = {
   any: true,
@@ -302,7 +297,7 @@ export const ROLLUP_FILTER_OPERATORS: FilterOperatorTypeMap<RollupFilterOperator
 
 /**
  * This duplicates [[PropertyFilterDataMap]], but seems more correct.
- * @category Filter
+ * @category Query
  */
 export type PropertyToToFilterOperator = {
   title: TextFilterOperator;
@@ -328,7 +323,7 @@ export type PropertyToToFilterOperator = {
 
 /**
  * Runtime type information for [[PropertyToToFilterOperator]].
- * @category Filter
+ * @category Query
  */
 export const PROPERTY_FILTER_OPERATORS: {
   [T in PropertyType]: { [O in FilterOperatorType<T>]: true };
@@ -380,7 +375,7 @@ type AnyFilterOperator = FilterOperatorTypesMap[keyof FilterOperatorTypesMap];
 
 /**
  * Runtime information for all known filter operators.
- * @category Filter
+ * @category Query
  */
 export const ALL_PROPERTY_FILTER_OPERATORS: Record<AnyFilterOperator, true> = Object.assign(
   {},
@@ -430,7 +425,7 @@ function buildPropertyFilter<
  * Helper object for building [[PropertyFilter]]s for the given `property`.
  * @param property Property to build a filter for.
  * @returns a property filter builder.
- * @category Filter
+ * @category Query
  */
 export function propertyFilterBuilder<Type extends PropertyType>(
   property: PropertyPointer<Type>
@@ -458,7 +453,7 @@ type DatabaseFilterBuilder<T extends PartialDatabaseSchema> = {
  * Helper object for building [[PropertyFilter]]s for the properties in the given `schema`.
  * @param schema Database schema to build filters for.
  * @returns A property filter builder for schema property, plus compound filter builders.
- * @category Filter
+ * @category Query
  * @category Database
  */
 export function databaseFilterBuilder<T extends PartialDatabaseSchema>(
