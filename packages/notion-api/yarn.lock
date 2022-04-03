@@ -23,11 +23,6 @@
     chalk "^2.0.0"
     js-tokens "^4.0.0"
 
-"@jitl/util@*":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@jitl/util/-/util-0.0.1.tgz#d17647927a47892415393cddb2d0fc54f2bb6710"
-  integrity sha512-UKcXCEGAffTjl/fFyCL22eJV0awqN7DEghEcUwzAbQS0dDpBtgM5OfYe/wqy+k2hfeQn4lRwzLneYrz/WfX4jA==
-
 "@leichtgewicht/ip-codec@^2.0.1":
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/@leichtgewicht/ip-codec/-/ip-codec-2.0.3.tgz#0300943770e04231041a51bd39f0439b5c7ab4f0"

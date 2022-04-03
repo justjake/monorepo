@@ -24,12 +24,7 @@ const fsPromises = fs.promises;
 import * as emojiUnicode from 'emoji-unicode';
 import { unreachable } from '@jitl/util';
 import fastSafeStringify from 'fast-safe-stringify';
-import {
-  CacheBehavior,
-  fillCache,
-  getFromCache,
-  NotionObjectIndex,
-} from './cache';
+import { CacheBehavior, fillCache, getFromCache, NotionObjectIndex } from './cache';
 
 const DEBUG_ASSET = DEBUG.extend('asset');
 
@@ -67,9 +62,7 @@ export type AssetRequest =
 export function getAssetRequestKey(assetRequest: AssetRequest): string {
   const { object, id, field, ...rest } = assetRequest;
   const fieldKey = `${object}.${id}.${field}`;
-  const restKey = Object.keys(rest).length
-    ? hashString(fastSafeStringify.stable(rest))
-    : undefined;
+  const restKey = Object.keys(rest).length ? hashString(fastSafeStringify.stable(rest)) : undefined;
   return restKey ? `${fieldKey}.${restKey}` : fieldKey;
 }
 
@@ -83,15 +76,12 @@ type ObjectMap = {
   user: User;
 };
 
-type ObjectAssetRequest<T extends AssetRequest['object']> = Extract<
-  AssetRequest,
-  { object: T }
->;
+type ObjectAssetRequest<T extends AssetRequest['object']> = Extract<AssetRequest, { object: T }>;
 
-type FieldAssetRequest<
-  T extends AssetRequest['object'],
-  F extends string
-> = Extract<ObjectAssetRequest<T>, { field: F }>;
+type FieldAssetRequest<T extends AssetRequest['object'], F extends string> = Extract<
+  ObjectAssetRequest<T>,
+  { field: F }
+>;
 
 interface AssetHandlerArgs<Request> {
   notion: NotionClient;
@@ -203,14 +193,14 @@ const AssetHandlers: AssetHandlers = {
       const index = args.request.propertyIndex || 0;
       const file = property.files[index];
       // Convert file to asset
-      if ('external' in file) {
+      if (file && 'external' in file) {
         return {
           type: 'external',
           external: file.external,
         };
       }
 
-      if ('file' in file) {
+      if (file && 'file' in file) {
         return {
           type: 'file',
           file: file.file,
@@ -259,11 +249,7 @@ export async function performAssetRequest(args: {
       unreachable(request);
   }
   const asset = await result;
-  DEBUG_ASSET(
-    'request %s --> %s',
-    getAssetRequestKey(request),
-    asset && getAssetKey(asset)
-  );
+  DEBUG_ASSET('request %s --> %s', getAssetRequestKey(request), asset && getAssetKey(asset));
   return asset;
 }
 
@@ -296,9 +282,7 @@ export function getAssetKey(asset: Asset): string {
   unreachable(asset);
 }
 
-const EMOJI_DATASOURCE_APPLE_PATH = path.dirname(
-  require.resolve('emoji-datasource-apple')
-);
+let EMOJI_RESOURCE_PATH: string | undefined;
 
 /**
  * [[Error.name]] of errors thrown by [[ensureImageDownloaded]] when
@@ -345,20 +329,11 @@ export async function ensureImageDownloaded(args: {
     https.get(url, (res) => {
       if (res.statusCode && res.statusCode >= 400 && res.statusCode <= 599) {
         const permissionError = res.statusCode >= 401 && res.statusCode <= 403;
-        DEBUG_ASSET(
-          'download %s (%d %s): error',
-          url,
-          res.statusCode,
-          res.statusMessage
-        );
+        DEBUG_ASSET('download %s (%d %s): error', url, res.statusCode, res.statusMessage);
         const error = Object.assign(
-          new Error(
-            `Image download failed: HTTP ${res.statusCode}: ${res.statusMessage}`
-          ),
+          new Error(`Image download failed: HTTP ${res.statusCode}: ${res.statusMessage}`),
           {
-            name: permissionError
-              ? DOWNLOAD_PERMISSION_ERROR
-              : DOWNLOAD_HTTP_ERROR,
+            name: permissionError ? DOWNLOAD_PERMISSION_ERROR : DOWNLOAD_HTTP_ERROR,
             code: res.statusCode,
             statusMessage: res.statusMessage,
             url,
@@ -368,17 +343,9 @@ export async function ensureImageDownloaded(args: {
         return;
       }
 
-      const ext = mimeTypes.extension(
-        res.headers['content-type'] || 'image/png'
-      );
+      const ext = mimeTypes.extension(res.headers['content-type'] || 'image/png');
       const dest = `${filenamePrefix}.${ext}`;
-      DEBUG_ASSET(
-        'download %s (%d %s) --> %s',
-        url,
-        res.statusCode,
-        res.statusMessage,
-        dest
-      );
+      DEBUG_ASSET('download %s (%d %s) --> %s', url, res.statusCode, res.statusMessage, dest);
 
       const destStream = fs.createWriteStream(path.join(directory, dest));
       res
@@ -403,11 +370,12 @@ export async function ensureEmojiCopied(args: {
   cacheBehavior?: CacheBehavior;
 }): Promise<string | undefined> {
   const { emoji, directory, filenamePrefix, cacheBehavior } = args;
+  if (EMOJI_RESOURCE_PATH === undefined) {
+    EMOJI_RESOURCE_PATH = path.dirname(require.resolve('emoji-datasource-apple'));
+  }
+
   const codepoints = emojiUnicode(emoji).split(' ').join('-');
-  const source = path.join(
-    EMOJI_DATASOURCE_APPLE_PATH,
-    `img/apple/64/${codepoints}.png`
-  );
+  const source = path.join(EMOJI_RESOURCE_PATH, `img/apple/64/${codepoints}.png`);
 
   const destinationBasename = `${filenamePrefix}.png`;
   const destination = path.join(directory, destinationBasename);

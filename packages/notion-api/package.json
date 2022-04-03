@@ -28,7 +28,13 @@
     "directory": "packages/notion-api"
   },
   "peerDependencies": {
-    "@notionhq/client": "^0.4.13"
+    "@notionhq/client": "^0.4.13",
+    "emoji-datasource-apple": "^7.0.2"
+  },
+  "peerDependenciesMeta": {
+    "emoji-datasource-apple": {
+      "optional": true
+    }
   },
   "scripts": {
     "rebuild": "cd ../.. && ./rebuild-api.sh",
@@ -36,11 +42,9 @@
     "ship": "cd ../.. && ./rebuild-api.sh && cd dist/packages/notion-api && npm publish"
   },
   "dependencies": {
-    "@jitl/util": ">= 0.0.3",
     "@types/debug": "^4.1.7",
     "@types/mime-types": "^2.1.1",
     "debug": "^4.3.3",
-    "emoji-datasource-apple": "^7.0.2",
     "emoji-unicode": "^2.0.1",
     "fast-safe-stringify": "^2.1.1",
     "mime-types": "^2.1.34",
@@ -48,6 +52,7 @@
   },
   "devDependencies": {
     "@notionhq/client": "^0.4.13",
+    "emoji-datasource-apple": "^7.0.2",
     "markserv": "^1.17.4",
     "typedoc": "^0.22.12",
     "typedoc-plugin-inline-sources": "^1.0.1",
