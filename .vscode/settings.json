@@ -2,5 +2,6 @@
   "cSpell.words": [
     "jotai",
     "Subfilter"
-  ]
+  ],
+  "typescript.tsdk": "node_modules/typescript/lib"
 }
