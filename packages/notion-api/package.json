@@ -53,6 +53,7 @@
   "devDependencies": {
     "@notionhq/client": "^0.4.13",
     "emoji-datasource-apple": "^7.0.2",
+    "esbuild-runner": "^2.2.1",
     "markserv": "^1.17.4",
     "typedoc": "^0.22.12",
     "typedoc-plugin-inline-sources": "^1.0.1",

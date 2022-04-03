@@ -27,6 +27,7 @@ export function runExample(
     notion,
     name,
     database_id: process.env.NOTION_DATABASE_ID || 'No NOTION_DATABASE_ID',
+    page_id: process.env.NOTION_PAGE_ID || 'No NOTION_PAGE_ID',
   };
 
   console.error('Running example: ' + name);

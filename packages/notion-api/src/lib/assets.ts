@@ -21,7 +21,7 @@ import {
   User,
 } from '..';
 const fsPromises = fs.promises;
-import * as emojiUnicode from 'emoji-unicode';
+import emojiUnicode from 'emoji-unicode';
 import { unreachable } from '@jitl/util';
 import fastSafeStringify from 'fast-safe-stringify';
 import { CacheBehavior, fillCache, getFromCache, NotionObjectIndex } from './cache';
