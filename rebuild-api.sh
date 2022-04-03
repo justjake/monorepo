@@ -24,3 +24,5 @@ done
 
 cd "$DIR"
 yarn install
+yarn link
+yarn link @notionhq/client

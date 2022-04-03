@@ -433,9 +433,9 @@ export function propertyFilterBuilder<Type extends PropertyType>(
       operator,
       (value: any) => buildPropertyFilter(property, operator as any, value),
     ])
-  );
-
-  return builders as PropertyFilterBuilder<Type>;
+  ) as PropertyFilterBuilder<Type>;
+  builders.schema = property;
+  return builders;
 }
 
 {

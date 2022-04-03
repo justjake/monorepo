@@ -408,11 +408,13 @@ export function visitChildBlocks(
 // Rich text.
 ////////////////////////////////////////////////////////////////////////////////
 
+const RICH_TEXT_BLOCK_PROPERTY = 'rich_text';
+
 /**
  * Notion API rich text. An array of rich text tokens.
  * @category Rich Text
  */
-export type RichText = Block<'paragraph'>['paragraph']['text'];
+export type RichText = Block<'paragraph'>['paragraph'][typeof RICH_TEXT_BLOCK_PROPERTY];
 /**
  * A single token of rich text.
  * @category Rich Text
@@ -530,8 +532,8 @@ export function visitTextTokens(object: Block | Page, fn: (token: RichTextToken)
 
   if (object.object === 'block') {
     const blockData = getBlockData(object);
-    if ('text' in blockData) {
-      blockData.text.forEach(fn);
+    if (RICH_TEXT_BLOCK_PROPERTY in blockData) {
+      blockData[RICH_TEXT_BLOCK_PROPERTY].forEach(fn);
     }
 
     if ('caption' in blockData) {
@@ -646,15 +648,19 @@ export const Filter = {
     switch (type) {
       case 'and': {
         // Optimization: lift up and combine `and` filter terms.
-        const lifted = defined.filter(Filter.isAnd).flatMap(({ and }) => and);
-        const notLifted = defined.filter((subfilter) => !Filter.isAnd(subfilter));
-        return { and: [...lifted, notLifted] as PropertyFilter[] };
+        const lifted = defined.filter(Filter.isAnd).flatMap(({ and }) => and) as PropertyFilter[];
+        const notLifted = defined.filter(
+          (subfilter) => !Filter.isAnd(subfilter)
+        ) as PropertyFilter[];
+        return { and: [...lifted, ...notLifted] };
       }
       case 'or': {
         // Optimization: lift up and combine `or` filter terms.
-        const lifted: Filter[] = defined.filter(Filter.isOr).flatMap(({ or }) => or);
-        const notLifted: Filter[] = defined.filter((subfilter) => !Filter.isOr(subfilter));
-        return { or: [...lifted, ...notLifted] as PropertyFilter[] };
+        const lifted = defined.filter(Filter.isOr).flatMap(({ or }) => or) as PropertyFilter[];
+        const notLifted = defined.filter(
+          (subfilter) => !Filter.isOr(subfilter)
+        ) as PropertyFilter[];
+        return { or: [...lifted, ...notLifted] };
       }
       default:
         unreachable(type);

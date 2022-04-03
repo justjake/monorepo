@@ -28,7 +28,7 @@
     "directory": "packages/notion-api"
   },
   "peerDependencies": {
-    "@notionhq/client": "^0.4.13",
+    "@notionhq/client": "^1.0.4",
     "emoji-datasource-apple": "^7.0.2"
   },
   "peerDependenciesMeta": {
@@ -51,7 +51,7 @@
     "node-emoji": "^1.11.0"
   },
   "devDependencies": {
-    "@notionhq/client": "^0.4.13",
+    "@notionhq/client": "^1.0.4",
     "emoji-datasource-apple": "^7.0.2",
     "esbuild-runner": "^2.2.1",
     "markserv": "^1.17.4",

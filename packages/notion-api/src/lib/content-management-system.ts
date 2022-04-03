@@ -333,7 +333,9 @@ export interface CMSPage<CustomFrontmatter> {
  * ```
  * @category CMS
  */
-export type CMSPageOf<T extends CMS<any>> = T extends CMS<infer Props> ? CMSPage<Props> : never;
+export type CMSPageOf<T extends CMS<any, any>> = T extends CMS<infer CustomFrontmatter, any>
+  ? CMSPage<CustomFrontmatter>
+  : never;
 
 /**
  * Options for [[CMS]] retrieve methods.
