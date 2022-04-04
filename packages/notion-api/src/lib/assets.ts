@@ -22,7 +22,7 @@ import {
 } from '..';
 const fsPromises = fs.promises;
 import emojiUnicode from 'emoji-unicode';
-import { unreachable } from '@jitl/util';
+import { Assert, assertDefined, objectEntries, objectKeys, unreachable } from '@jitl/util';
 import fastSafeStringify from 'fast-safe-stringify';
 import { CacheBehavior, fillCache, getFromCache, NotionObjectIndex } from './cache';
 
@@ -55,15 +55,123 @@ export type AssetRequest =
   | { object: 'block'; id: string; field: 'icon' } // eg, for callout
   | { object: 'user'; id: string; field: 'avatar_url' };
 
+const DUMMY_URL = new URL('https://example.com');
+
 /**
  * Get a unique string key for de-duplicating [[AssetRequest]]s
  * @category Asset
  */
 export function getAssetRequestKey(assetRequest: AssetRequest): string {
+  const url = getAssetRequestUrl(assetRequest, DUMMY_URL, undefined);
+  for (const [key, val] of url.searchParams) {
+    url.searchParams.set(key, hashString(val));
+  }
+  const path = url.pathname.slice(1).replace(/\//g, '.');
+  const rest =
+    url.searchParams.toString() === '' ? '' : `.${hashString(url.searchParams.toString())}`;
+  return path + rest;
+}
+
+/**
+ * Build a URL to GET an asset.
+ * @param baseUrl The base URL where the asset request handler is mounted (ending with a /), eg `https://mydomain.com/api/notion-assets/`.
+ * @category Asset
+ */
+export function getAssetRequestUrl(
+  assetRequest: AssetRequest,
+  baseUrl: URL,
+  last_edited_time: string | undefined
+): URL {
   const { object, id, field, ...rest } = assetRequest;
-  const fieldKey = `${object}.${id}.${field}`;
-  const restKey = Object.keys(rest).length ? hashString(fastSafeStringify.stable(rest)) : undefined;
-  return restKey ? `${fieldKey}.${restKey}` : fieldKey;
+  const url = new URL(`${object}/${id}/${field}`, baseUrl);
+  const paramKeys = objectKeys(rest);
+  for (const key of paramKeys) {
+    url.searchParams.set(key, fastSafeStringify.stable(rest[key]));
+  }
+  url.searchParams.sort();
+  if (last_edited_time) {
+    url.searchParams.set(ASSET_REQUEST_LAST_EDITED_TIME_PARAM, last_edited_time);
+  }
+  return url;
+}
+
+const NOT_SLASH = '[^/]';
+const SLASH = '\\/';
+const URL_TRIPLE = new RegExp(
+  `^(?<object>${NOT_SLASH}+)${SLASH}(?<id>${NOT_SLASH}+)${SLASH}(?<field>${NOT_SLASH}+)${SLASH}?$`
+);
+
+const ASSET_REQUEST_QUERY_PATH_PARAM = 'asset_request';
+const ASSET_REQUEST_LAST_EDITED_TIME_PARAM = 'last_edited_time';
+
+// Should not actually intersect any query param keys.
+type _queryParamNotInAssetRequest = Assert<
+  never,
+  Extract<
+    keyof AssetRequest,
+    typeof ASSET_REQUEST_QUERY_PATH_PARAM | typeof ASSET_REQUEST_LAST_EDITED_TIME_PARAM
+  >
+>;
+
+/**
+ * @category Asset
+ */
+export interface AssetRequestNextJSQuery {
+  [ASSET_REQUEST_QUERY_PATH_PARAM]: [object: string, id: string, field: string];
+  [key: string]: string | string[];
+}
+
+/**
+ * Parse an AssetRequest from a NextJS-style query object.
+ * @category Asset
+ */
+export function parseAssetRequestQuery(query: AssetRequestNextJSQuery): AssetRequest {
+  const assetRequestParts = query[ASSET_REQUEST_QUERY_PATH_PARAM];
+  if (!query[ASSET_REQUEST_QUERY_PATH_PARAM]) {
+    throw new Error(`Missing ${ASSET_REQUEST_QUERY_PATH_PARAM} query param`);
+  }
+  if (!(Array.isArray(assetRequestParts) && assetRequestParts.length === 3)) {
+    throw new Error(`${ASSET_REQUEST_QUERY_PATH_PARAM} query param must be [object, id, field]`);
+  }
+  const [object, id, field] = assetRequestParts;
+  const result: Record<string, unknown> = { object, id, field };
+  for (const [key, values] of objectEntries(query)) {
+    const val = Array.isArray(values) ? values[0] || '' : values;
+    if (key !== ASSET_REQUEST_LAST_EDITED_TIME_PARAM && key !== ASSET_REQUEST_QUERY_PATH_PARAM) {
+      result[key] = JSON.parse(val);
+    }
+  }
+  return result as AssetRequest;
+}
+
+/**
+ * Inverse of [[getAssetRequestUrl]].
+ * @category Asset
+ */
+export function parseAssetRequestUrl(assetUrl: URL | string, baseURL: URL): AssetRequest {
+  const url = assetUrl instanceof URL ? assetUrl : new URL(assetUrl, baseURL);
+  const base = new URL(baseURL);
+  const chopped = url.pathname.slice(base.pathname.length);
+  const match = chopped.match(URL_TRIPLE);
+  if (!match) {
+    throw new Error(
+      `Failed to parse AssetRequest from URL suffix: ${JSON.stringify(
+        chopped
+      )} (asset ${assetUrl}, base ${baseURL}, regex ${URL_TRIPLE})`
+    );
+  }
+  assertDefined(match.groups);
+  const { object, id, field } = match.groups;
+  assertDefined(object);
+  assertDefined(id);
+  assertDefined(field);
+  const query: AssetRequestNextJSQuery = {
+    [ASSET_REQUEST_QUERY_PATH_PARAM]: [object, id, field],
+  };
+  for (const [key, val] of url.searchParams) {
+    query[key] = val;
+  }
+  return parseAssetRequestQuery(query);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

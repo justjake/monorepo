@@ -40,6 +40,7 @@ import {
   ensureAssetInDirectory,
   getAssetKey,
   getAssetRequestKey,
+  parseAssetRequestUrl,
   performAssetRequest,
 } from './assets';
 import { CacheBehavior, fillCache, getFromCache, NotionObjectIndex } from './cache';
@@ -52,6 +53,8 @@ import {
   PropertyFilterBuilder,
   propertyFilterBuilder,
 } from './query';
+import type { IncomingMessage, ServerResponse } from 'http';
+import * as mimeTypes from 'mime-types';
 
 const DEBUG_CMS = DEBUG.extend('cms');
 const fs = fsOld.promises;
@@ -1289,6 +1292,44 @@ class AssetCache {
       }
       throw error;
     }
+  }
+
+  async serve(args: {
+    req: IncomingMessage;
+    res: ServerResponse;
+    baseURL: URL;
+    cache: NotionObjectIndex;
+    notion: NotionClient;
+    cacheBehavior?: CacheBehavior;
+  }) {
+    const { req, res, baseURL, cache, notion, cacheBehavior } = args;
+    const assetRequest = parseAssetRequestUrl(req.url || '', baseURL);
+    const fileName = await this.download({
+      request: assetRequest,
+      cache,
+      notion,
+      cacheBehavior,
+    });
+    if (!fileName) {
+      res.writeHead(404, 'Asset not found');
+      res.end();
+      return;
+    }
+    const filePath = path.resolve(this.directory, fileName);
+
+    // TODO: gzip?
+    const fileStream = fsOld.createReadStream(filePath);
+    const stat = await fs.stat(filePath);
+    const contentType = mimeTypes.contentType(path.extname(filePath)) || undefined;
+    res.writeHead(200, {
+      'Content-Type': contentType,
+      'Content-Length': stat.size,
+    });
+    fileStream.pipe(res);
+    await new Promise((resolve, reject) => {
+      fileStream.on('end', resolve);
+      fileStream.on('error', reject);
+    });
   }
 }
 
