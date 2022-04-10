@@ -4,6 +4,14 @@
 
 Options for [CMS](../classes/CMS.md) retrieve methods.
 
+## Hierarchy
+
+- **`CMSRetrieveOptions`**
+
+  ↳ [`CMSQueryParametersOptions`](CMSQueryParametersOptions.md)
+
+  ↳ [`CMSScopeOptions`](CMSScopeOptions.md)
+
 ## Table of contents
 
 ### Properties
@@ -20,4 +28,4 @@ If true, ignore the `visible` property of any retrieved [CMSPage](CMSPage.md)s b
 
 #### Defined in
 
-[lib/content-management-system.ts:256](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L256)
+[lib/content-management-system.ts:366](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L366)

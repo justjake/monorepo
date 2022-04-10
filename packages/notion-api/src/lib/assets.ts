@@ -118,8 +118,10 @@ const URL_TRIPLE = new RegExp(
   `^(?<object>${NOT_SLASH}+)${SLASH}(?<id>${NOT_SLASH}+)${SLASH}(?<field>${NOT_SLASH}+)${SLASH}?$`
 );
 
-const ASSET_REQUEST_QUERY_PATH_PARAM = 'asset_request';
-const ASSET_REQUEST_LAST_EDITED_TIME_PARAM = 'last_edited_time';
+/** @category Asset */
+export const ASSET_REQUEST_QUERY_PATH_PARAM = 'asset_request';
+/** @category Asset */
+export const ASSET_REQUEST_LAST_EDITED_TIME_PARAM = 'last_edited_time';
 
 // Should not actually intersect any query param keys.
 type _queryParamNotInAssetRequest = Assert<
@@ -138,6 +140,15 @@ export interface AssetRequestNextJSQuery {
   [key: string]: string | string[];
 }
 
+/**
+ * The result of parsing an [[AssetRequest]] that was encoded as a URL or
+ * partially parsed as a NextJS query object.
+ *
+ * Encoded AssetRequests optionally contain a `last_edited_time`, which is used
+ * for freshness and cache busting.
+ *
+ * @category Asset
+ */
 export interface ParsedAssetRequest {
   assetRequest: AssetRequest;
   [ASSET_REQUEST_LAST_EDITED_TIME_PARAM]: string | undefined;

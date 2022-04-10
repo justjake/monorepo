@@ -4,6 +4,14 @@
 
 Common arguments for paginated APIs.
 
+**`source`**
+```typescript
+export interface PaginatedArgs {
+    start_cursor?: string;
+    page_size?: number;
+}
+```
+
 ## Table of contents
 
 ### Properties
@@ -19,7 +27,7 @@ Common arguments for paginated APIs.
 
 #### Defined in
 
-[lib/notion-api.ts:96](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L96)
+[lib/notion-api.ts:103](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L103)
 
 ___
 
@@ -29,4 +37,4 @@ ___
 
 #### Defined in
 
-[lib/notion-api.ts:97](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L97)
+[lib/notion-api.ts:104](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L104)

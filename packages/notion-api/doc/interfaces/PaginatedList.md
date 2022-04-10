@@ -4,6 +4,16 @@
 
 A page of results from the Notion API.
 
+**`source`**
+```typescript
+export interface PaginatedList<T> {
+    object: 'list';
+    results: T[];
+    next_cursor: string | null;
+    has_more: boolean;
+}
+```
+
 ## Type parameters
 
 | Name |
@@ -27,7 +37,7 @@ A page of results from the Notion API.
 
 #### Defined in
 
-[lib/notion-api.ts:85](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L85)
+[lib/notion-api.ts:91](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L91)
 
 ___
 
@@ -37,7 +47,7 @@ ___
 
 #### Defined in
 
-[lib/notion-api.ts:86](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L86)
+[lib/notion-api.ts:92](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L92)
 
 ___
 
@@ -47,7 +57,7 @@ ___
 
 #### Defined in
 
-[lib/notion-api.ts:87](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L87)
+[lib/notion-api.ts:93](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L93)
 
 ___
 
@@ -57,4 +67,4 @@ ___
 
 #### Defined in
 
-[lib/notion-api.ts:88](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L88)
+[lib/notion-api.ts:94](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L94)

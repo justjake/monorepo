@@ -33,7 +33,7 @@ Type of the property. If the named property doesn't have this type, the Property
 
 #### Defined in
 
-[lib/notion-api.ts:671](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L671)
+[lib/notion-api.ts:896](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L896)
 
 ___
 
@@ -45,7 +45,7 @@ Name of the property
 
 #### Defined in
 
-[lib/notion-api.ts:673](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L673)
+[lib/notion-api.ts:898](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L898)
 
 ___
 
@@ -57,4 +57,4 @@ ID of the property
 
 #### Defined in
 
-[lib/notion-api.ts:675](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L675)
+[lib/notion-api.ts:900](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/notion-api.ts#L900)

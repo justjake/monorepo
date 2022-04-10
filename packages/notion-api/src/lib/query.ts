@@ -1,16 +1,12 @@
 // Sketch first.
 
-import { Assert, Exact, objectEntries } from '@jitl/util';
+import { Assert, objectEntries } from '@jitl/util';
 import { QueryDatabaseParameters } from '@notionhq/client/build/src/api-endpoints';
 import {
   EmptyObject,
   Filter,
-  getPropertySchemaData,
   PartialDatabaseSchema,
-  PartialPropertySchema,
   PropertyFilter,
-  PropertyFilterDataMap,
-  PropertyFilterType,
   PropertyPointer,
   PropertySort,
   PropertyType,
@@ -36,14 +32,20 @@ type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x
 // These are copy-pasted due to Typescript type depth limitations.
 ////////////////////////////////////////////////////////////////////////////////
 
-type FilterOperatorTypeMap<T> = {
+/**
+ * An object mapping from filter operator name to `true`.
+ * @category Query
+ */
+export type FilterOperatorTypeMap<T> = {
   [K in keyof UnionToIntersection<T>]: true;
 };
 
 /**
+ * IDs in the Notion API are strings containing UUIDs.
+ *
  * @category API
  */
-type IdRequest = string;
+export type IdRequest = string;
 
 /**
  * @category Query
@@ -71,6 +73,7 @@ const CONTAINS_OPERATORS = {
 
 /**
  * @category Query
+ * @source
  */
 export type TextFilterOperator =
   | { equals: string }
@@ -95,6 +98,7 @@ export const TEXT_FILTER_OPERATORS: FilterOperatorTypeMap<TextFilterOperator> = 
 
 /**
  * @category Query
+ * @source
  */
 export type NumberFilterOperator =
   | { equals: number }
@@ -120,6 +124,7 @@ export const NUMBER_FILTER_OPERATORS: FilterOperatorTypeMap<NumberFilterOperator
 
 /**
  * @category Query
+ * @source
  */
 export type CheckboxFilterOperator = { equals: boolean } | { does_not_equal: boolean };
 
@@ -132,6 +137,7 @@ export const CHECKBOX_FILTER_OPERATORS: FilterOperatorTypeMap<CheckboxFilterOper
 
 /**
  * @category Query
+ * @source
  */
 export type SelectFilterOperator =
   | { equals: string }
@@ -149,6 +155,7 @@ export const SELECT_FILTER_OPERATORS: FilterOperatorTypeMap<SelectFilterOperator
 
 /**
  * @category Query
+ * @source
  */
 export type MultiSelectFilterOperator =
   | { contains: string }
@@ -166,6 +173,7 @@ export const MULTI_SELECT_FILTER_OPERATORS: FilterOperatorTypeMap<MultiSelectFil
 
 /**
  * @category Query
+ * @source
  */
 export type DateFilterOperator =
   | { equals: string }
@@ -202,6 +210,7 @@ export const DATE_FILTER_OPERATORS: FilterOperatorTypeMap<DateFilterOperator> = 
 
 /**
  * @category Query
+ * @source
  */
 export type PeopleFilterOperator =
   | { contains: IdRequest }
@@ -219,6 +228,7 @@ export const PEOPLE_FILTER_OPERATORS: FilterOperatorTypeMap<PeopleFilterOperator
 
 /**
  * @category Query
+ * @source
  */
 export type RelationFilterOperator =
   | { contains: IdRequest }
@@ -236,6 +246,7 @@ export const RELATION_FILTER_OPERATORS: FilterOperatorTypeMap<RelationFilterOper
 
 /**
  * @category Query
+ * @source
  */
 export type FormulaFilterOperator =
   | { string: TextFilterOperator }
@@ -261,6 +272,7 @@ export const FORMULA_FILTER_OPERATORS: FilterOperatorTypeMap<FormulaFilterOperat
 
 /**
  * @category Query
+ * @source
  */
 export type RollupSubfilterOperator =
   | { rich_text: TextFilterOperator }
@@ -275,6 +287,7 @@ export type RollupSubfilterOperator =
 
 /**
  * @category Query
+ * @source
  */
 export type RollupFilterOperator =
   | { any: RollupSubfilterOperator }
@@ -297,6 +310,7 @@ export const ROLLUP_FILTER_OPERATORS: FilterOperatorTypeMap<RollupFilterOperator
 
 /**
  * This duplicates [[PropertyFilterDataMap]], but seems more correct.
+ * @source
  * @category Query
  */
 export type PropertyToToFilterOperator = {
@@ -386,8 +400,6 @@ export const ALL_PROPERTY_FILTER_OPERATORS: Record<AnyFilterOperator, true> = Ob
 // Filter Builder
 ////////////////////////////////////////////////////////////////////////////////
 
-// type PropertyFilterOperatorData<Type extends PropertyType, Op extends FilterOperatorType<Type>> = UnionToIntersection<
-
 type FilterOperatorMap = {
   [T in PropertyType]: {
     [O in FilterOperatorType<T>]: UnionToIntersection<FilterOperator<T>>[O];
@@ -395,6 +407,12 @@ type FilterOperatorMap = {
 };
 
 /**
+ * Contains a key for each filter operator for this property type.
+ * This allows easy tab completion when building filters for a database query.
+ *
+ * Create with {@link propertyFilterBuilder}, or use one created as part of
+ * {@link CMS.filter} or {@link databaseFilterBuilder}.
+ *
  * @category Query
  */
 export type PropertyFilterBuilder<Type extends PropertyType> = { schema: PropertyPointer<Type> } & {
@@ -443,8 +461,14 @@ export function propertyFilterBuilder<Type extends PropertyType>(
   builder.does_not_equal(1);
 }
 
-type DatabaseFilterBuilder<T extends PartialDatabaseSchema> = {
-  [K in keyof T]: { schema: T[K] } & PropertyFilterBuilder<T[K]['type']>;
+/**
+ * Contains a {@link PropertyFilterBuilder} for each property in a {@link PartialDatabaseSchema}.
+ *
+ * Create one with {@link databaseFilterBuilder}, or use the filter builders from {@link CMS.filter}.
+ * @category Query
+ */
+export type DatabaseFilterBuilder<T extends PartialDatabaseSchema> = {
+  [K in keyof T]: PropertyFilterBuilder<T[K]['type']>;
 } & typeof Filter & { schema: T };
 
 /**
@@ -496,6 +520,10 @@ export interface TimestampSortBuilder {
 }
 
 /**
+ * For each property in [[PartialDatabaseSchema]]
+ *
+ * Create one with {@link databaseSortBuilder} or use the sort builders from {@link CMS.sort}.
+ *
  * @category Query
  */
 export type DatabaseSortBuilder<T extends PartialDatabaseSchema> = TimestampSortBuilder & {

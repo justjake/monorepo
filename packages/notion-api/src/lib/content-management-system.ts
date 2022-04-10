@@ -62,6 +62,9 @@ const fs = fsOld.promises;
 /**
  * Specifies that the CMS should look up a custom property from regular Page property.
  * Consider using this with a formula property for maximum flexibility.
+ *
+ * See {@link CMSConfig}.
+ *
  * @category CMS
  * @source
  */
@@ -73,6 +76,9 @@ export type CMSCustomPropertyPointer<T> = {
 
 /**
  * Specifies that the CMS should compute a value for the page using a function.
+ *
+ * See {@link CMSConfig}.
+ *
  * @category CMS
  * @source
  */
@@ -90,7 +96,15 @@ export interface CMSCustomPropertyDerived<
 }
 
 /**
+ * Property key name in a database schema.
  * Specifies that the CMS should look up a property in the page's schema.
+ *
+ * For a database schema `{ name: { type: 'rich_text', name: 'Name', id: 'qX124' } }`,
+ * a valid CMSSchemaPropertyPointer<RichText, typeof schema> would be `'name'`.
+ *
+ * See {@link CMSConfig}, {@link CMSConfig.schema}.
+ *
+ * @category CMS
  */
 export type CMSSchemaPropertyPointer<T, Schema extends PartialDatabaseSchema> = {
   [K in keyof Schema]: Schema[K] extends PropertyPointerWithOutput<T> ? K : never;
@@ -98,6 +112,9 @@ export type CMSSchemaPropertyPointer<T, Schema extends PartialDatabaseSchema> = 
 
 /**
  * Specifies how a CMS should get a custom property.
+ *
+ * See {@link CMSConfig}.
+ *
  * @category CMS
  * @source
  */
@@ -433,9 +450,33 @@ export class CMS<
   public pages = new Map<string, CMSPage<CustomFrontmatter>>();
   /** Asset downloader, requires `assets` configuration */
   public assets = this.config.assets && new AssetCache(this.config.assets);
-  /** Filter helpers for this CMS's database schema. */
+  /**
+   * Filter helpers for this CMS's database schema.
+   *
+   * ```typescript
+   * const cms = new CMS({ ... })
+   * cms.query({
+   *   filter: cms.filter.and(
+   *     cms.filter.createdAt.last_week({}),
+   *     cms.filter.featured.equals(true)
+   *   ),
+   * })
+   * ```
+   */
   public filter = databaseFilterBuilder(this.schema);
-  /** Sort helpers for this CMS's database schema. */
+  /**
+   * Sort helpers for this CMS's database schema.
+   *
+   * ```typescript
+   * const cms = new CMS({ ... })
+   * cms.query({
+   *   sorts: [
+   *     cms.sort.createdAt.descending,
+   *     cms.sort.title.ascending,
+   *   ],
+   * })
+   * ```
+   */
   public sort = databaseSortBuilder(this.schema);
   /** Resolves [[CMSConfig.slug]] and [[CMSConfig.visible]] config options to property pointers  */
   public propertyResolver: CMSPropertyResolver<CustomFrontmatter, Schema>;
@@ -909,6 +950,8 @@ export class CMS<
 /**
  * Resolve [[CMSConfig]] options to property pointers.
  * This is implemented as a separate class from [[CMS]] to improve type inference.
+ * See {@link CMS.propertyResolver}.
+ * @category CMS
  */
 export class CMSPropertyResolver<CustomFrontmatter, Schema extends PartialDatabaseSchema> {
   config: CMSConfig<CustomFrontmatter, Schema>;

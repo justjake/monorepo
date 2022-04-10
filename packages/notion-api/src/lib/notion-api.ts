@@ -50,6 +50,8 @@ const logger: Logger = (level, message, extraInfo) => {
  * A logger for the @notionhq/client Client that logs to the @jitl/notion-api
  * namespace.
  *
+ *
+ * @example
  * ```typescript
  * const client = new NotionClient({
  *   logger: NotionClientDebugLogger,
@@ -82,6 +84,7 @@ export type EmptyObject = Record<string, never>;
 
 /**
  * A page of results from the Notion API.
+ * @source
  * @category API
  */
 export interface PaginatedList<T> {
@@ -93,6 +96,7 @@ export interface PaginatedList<T> {
 
 /**
  * Common arguments for paginated APIs.
+ * @source
  * @category API
  */
 export interface PaginatedArgs {
@@ -574,6 +578,9 @@ export type Bot = Extract<User, { type: 'bot' }>;
  */
 export type Filter = NonNullable<QueryDatabaseParameters['filter']>;
 
+/**
+ * @category Query
+ */
 export type AnyPropertyFilter = Extract<Filter, { type?: string }>;
 
 /**
@@ -860,6 +867,9 @@ export type FormulaPropertyValueType = AnyFormulaPropertyValue['type'];
 export type FormulaPropertyValue<Type extends FormulaPropertyValueType = FormulaPropertyValueType> =
   Extract<AnyFormulaPropertyValue, { type: Type }>;
 
+/**
+ * @category Property
+ */
 export type FormulaPropertyValueData = string | number | boolean | DateResponse | null;
 
 /**
