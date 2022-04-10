@@ -404,6 +404,7 @@ export interface CMSScope<CustomFrontmatter> {
 }
 
 const DEBUG_SLUG = DEBUG_CMS.extend('slug');
+const DEBUG_QUERY = DEBUG_CMS.extend('query');
 
 /**
  * A Content Management System (CMS) based on the Notion API.
@@ -1204,6 +1205,7 @@ class AssetCache {
     }
   }
 
+  /** Get an asset that was loading into memory by this process already. */
   async fromCache(request: AssetRequest): Promise<string | undefined> {
     const assetRequestKey = getAssetRequestKey(request);
     const asset = this.assetRequestCache.get(assetRequestKey);
@@ -1230,6 +1232,7 @@ class AssetCache {
     return path;
   }
 
+  /** Download an asset and fill related in-memory caches, if needed. */
   async download(args: {
     request: AssetRequest;
     cache: NotionObjectIndex;
@@ -1294,16 +1297,52 @@ class AssetCache {
     }
   }
 
+  /**
+   * Serve an asset request.
+   * You should await this function and supply your own error handling.
+   */
   async serve(args: {
     req: IncomingMessage;
     res: ServerResponse;
     baseURL: URL;
     cache: NotionObjectIndex;
     notion: NotionClient;
-    cacheBehavior?: CacheBehavior;
+    dataCacheBehavior?: CacheBehavior;
+    /**
+     * If the request contains a last_edited_time param, the response will be
+     * served with this cache-control header. It should specify a high max-age.
+     * The image will be stored by your CDN until the last_edited_time changes.
+     *
+     * Suggestion: `'public, max-age=31536000, immutable'`
+     *
+     * See https://nextjs.org/docs/going-to-production#caching
+     */
+    responseCacheControlImmutable: string | undefined;
+    /**
+     * If the request does not contain a last_edited_time param, the response
+     * will be served with this cache-control header.  Ideally it uses a
+     * reasonable stale-while-revalidate value.
+     *
+     * Using stale-while-revalidate is important since the Notion API and
+     * download process can be slow!
+     *
+     * Suggestion: `'public, s-maxage=59, stale-while-revalidate'`
+     *
+     * See https://nextjs.org/docs/going-to-production#caching
+     */
+    responseCacheControlUnknown: string | undefined;
   }) {
-    const { req, res, baseURL, cache, notion, cacheBehavior } = args;
-    const assetRequest = parseAssetRequestUrl(req.url || '', baseURL);
+    const {
+      req,
+      res,
+      baseURL,
+      cache,
+      notion,
+      dataCacheBehavior: cacheBehavior,
+      responseCacheControlImmutable: cacheControlImmutable,
+      responseCacheControlUnknown: cacheControlUnknown,
+    } = args;
+    const { assetRequest, last_edited_time } = parseAssetRequestUrl(req.url || '', baseURL);
     const fileName = await this.download({
       request: assetRequest,
       cache,
@@ -1319,12 +1358,20 @@ class AssetCache {
 
     // TODO: gzip?
     const fileStream = fsOld.createReadStream(filePath);
+
     const stat = await fs.stat(filePath);
+    res.setHeader('Content-Length', stat.size);
+
     const contentType = mimeTypes.contentType(path.extname(filePath)) || undefined;
-    res.writeHead(200, {
-      'Content-Type': contentType,
-      'Content-Length': stat.size,
-    });
+    if (contentType) {
+      res.setHeader('Content-Type', contentType);
+    }
+    const cacheControl = last_edited_time ? cacheControlImmutable : cacheControlUnknown;
+    if (cacheControl) {
+      res.setHeader('Cache-Control', cacheControl);
+    }
+
+    res.writeHead(200);
     fileStream.pipe(res);
     await new Promise((resolve, reject) => {
       fileStream.on('end', resolve);

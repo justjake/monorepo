@@ -52,7 +52,7 @@ export type AssetRequest =
     }
   | { object: 'block'; id: string; field: 'image' }
   | { object: 'block'; id: string; field: 'file' }
-  | { object: 'block'; id: string; field: 'icon' } // eg, for callout
+  | { object: 'block'; id: string; field: 'icon' } // eg, for callout block
   | { object: 'user'; id: string; field: 'avatar_url' };
 
 const DUMMY_URL = new URL('https://example.com');
@@ -95,6 +95,23 @@ export function getAssetRequestUrl(
   return url;
 }
 
+/**
+ * Get an absolute pathname (eg `/api/notion-assets/...`) for the given asset request.
+ * @param assetRequest The asset request.
+ * @param basePathOrURL Eg `/api/notion-assets/`. A path or URL ending with a '/'.
+ * @param last_edited_time The last_edited_time of the object that contains this asset, for immutable caching.
+ * @category Asset
+ */
+export function getAssetRequestPathname(
+  assetRequest: AssetRequest,
+  basePathOrURL: string | URL,
+  last_edited_time: string | undefined
+): string {
+  const baseURL = new URL(basePathOrURL, DUMMY_URL);
+  const url = getAssetRequestUrl(assetRequest, baseURL, last_edited_time);
+  return url.pathname + url.search;
+}
+
 const NOT_SLASH = '[^/]';
 const SLASH = '\\/';
 const URL_TRIPLE = new RegExp(
@@ -121,11 +138,16 @@ export interface AssetRequestNextJSQuery {
   [key: string]: string | string[];
 }
 
+export interface ParsedAssetRequest {
+  assetRequest: AssetRequest;
+  [ASSET_REQUEST_LAST_EDITED_TIME_PARAM]: string | undefined;
+}
+
 /**
  * Parse an AssetRequest from a NextJS-style query object.
  * @category Asset
  */
-export function parseAssetRequestQuery(query: AssetRequestNextJSQuery): AssetRequest {
+export function parseAssetRequestQuery(query: AssetRequestNextJSQuery): ParsedAssetRequest {
   const assetRequestParts = query[ASSET_REQUEST_QUERY_PATH_PARAM];
   if (!query[ASSET_REQUEST_QUERY_PATH_PARAM]) {
     throw new Error(`Missing ${ASSET_REQUEST_QUERY_PATH_PARAM} query param`);
@@ -133,22 +155,30 @@ export function parseAssetRequestQuery(query: AssetRequestNextJSQuery): AssetReq
   if (!(Array.isArray(assetRequestParts) && assetRequestParts.length === 3)) {
     throw new Error(`${ASSET_REQUEST_QUERY_PATH_PARAM} query param must be [object, id, field]`);
   }
+  const last_edited_time = query[ASSET_REQUEST_LAST_EDITED_TIME_PARAM];
   const [object, id, field] = assetRequestParts;
   const result: Record<string, unknown> = { object, id, field };
   for (const [key, values] of objectEntries(query)) {
     const val = Array.isArray(values) ? values[0] || '' : values;
     if (key !== ASSET_REQUEST_LAST_EDITED_TIME_PARAM && key !== ASSET_REQUEST_QUERY_PATH_PARAM) {
-      result[key] = JSON.parse(val);
+      try {
+        result[key] = JSON.parse(val);
+      } catch (error) {
+        console.warn(`Warning: invalid JSON in query param ${key}=${val}`);
+      }
     }
   }
-  return result as AssetRequest;
+  return {
+    assetRequest: result as AssetRequest,
+    last_edited_time: typeof last_edited_time === 'string' ? last_edited_time : undefined,
+  };
 }
 
 /**
  * Inverse of [[getAssetRequestUrl]].
  * @category Asset
  */
-export function parseAssetRequestUrl(assetUrl: URL | string, baseURL: URL): AssetRequest {
+export function parseAssetRequestUrl(assetUrl: URL | string, baseURL: URL): ParsedAssetRequest {
   const url = assetUrl instanceof URL ? assetUrl : new URL(assetUrl, baseURL);
   const base = new URL(baseURL);
   const chopped = url.pathname.slice(base.pathname.length);
