@@ -431,8 +431,6 @@ export function getAssetKey(asset: Asset): string {
   unreachable(asset);
 }
 
-let EMOJI_RESOURCE_PATH: string | undefined;
-
 /**
  * [[Error.name]] of errors thrown by [[ensureImageDownloaded]] when
  * encountering a permission error, eg if the asset is expired.
@@ -516,15 +514,38 @@ export async function ensureEmojiCopied(args: {
   emoji: string;
   directory: string;
   filenamePrefix: string;
+  /**
+   * Path to directory containing emoji images.
+   * The directory should have contents like this:
+   * https://github.com/iamcal/emoji-data/tree/1ddc9ca67c1379c372b4ca39824659f71caa2825/img-apple-160
+   *
+   * If undefined, this path will be looked up using
+   * `require.resolve('emoji-datasource-apple')`, or fall back to
+   * `${process.cwd()}/node_modules/emoji-datasource-apple/img/apple/64`.
+   */
+  emojiSourceDirectory?: string;
   cacheBehavior?: CacheBehavior;
 }): Promise<string | undefined> {
   const { emoji, directory, filenamePrefix, cacheBehavior } = args;
-  if (EMOJI_RESOURCE_PATH === undefined) {
-    EMOJI_RESOURCE_PATH = path.dirname(require.resolve('emoji-datasource-apple'));
+  let emojiSourceDirectory = args.emojiSourceDirectory;
+  if (emojiSourceDirectory === undefined) {
+    let emojiPackageRoot: string;
+    try {
+      const emojiPackageMain = require.resolve('emoji-datasource-apple');
+      if (typeof emojiPackageMain !== 'string') {
+        throw new Error(
+          'Cannot use require.resolve to locate emoji-datasource-apple: resolve returned a module ID instead of a filesystem path'
+        );
+      }
+      emojiPackageRoot = path.dirname(emojiPackageMain);
+    } catch (error) {
+      emojiPackageRoot = path.join(process.cwd(), 'node_modules', 'emoji-datasource-apple');
+    }
+    emojiSourceDirectory = path.join(emojiPackageRoot, 'img', 'apple', '64');
   }
 
   const codepoints = emojiUnicode(emoji).split(' ').join('-');
-  const source = path.join(EMOJI_RESOURCE_PATH, `img/apple/64/${codepoints}.png`);
+  const source = path.join(emojiSourceDirectory, `${codepoints}.png`);
 
   const destinationBasename = `${filenamePrefix}.png`;
   const destination = path.join(directory, destinationBasename);
@@ -539,7 +560,7 @@ export async function ensureEmojiCopied(args: {
   }
 
   if (!fs.existsSync(source)) {
-    console.warn(`Emoji not found in emoji-datasource-apple: ${emoji}`);
+    console.warn(`Emoji not found: ${emoji} (path ${source})`);
     return undefined;
   }
 
@@ -556,6 +577,10 @@ export async function ensureEmojiCopied(args: {
 export async function ensureAssetInDirectory(args: {
   asset: Asset;
   directory: string;
+  /**
+   * See {@link ensureEmojiCopied}
+   */
+  emojiSourceDirectory?: string;
   cacheBehavior?: CacheBehavior;
 }): Promise<string | undefined> {
   const { asset, directory, cacheBehavior } = args;

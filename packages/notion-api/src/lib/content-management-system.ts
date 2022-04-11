@@ -314,6 +314,15 @@ export interface CMSConfig<
      * Notion, to `directory`?
      */
     downloadExternalAssets: boolean;
+
+    /**
+     * If specified, the CMS will attempt to copy emoji assets from this source
+     * directory into the `directory` specified above.
+     *
+     * If unset, falls back to data in the `emoji-datasource-apple` NPM package,
+     * if installed.
+     */
+    emojiSourceDirectory?: string;
   };
 }
 
@@ -1265,6 +1274,7 @@ class AssetCache {
           asset,
           directory: this.directory,
           cacheBehavior: 'read-only',
+          emojiSourceDirectory: this.config.emojiSourceDirectory,
         })
     );
 
@@ -1310,6 +1320,7 @@ class AssetCache {
           ensureAssetInDirectory({
             asset,
             directory: this.directory,
+            emojiSourceDirectory: this.config.emojiSourceDirectory,
           })
       );
 
