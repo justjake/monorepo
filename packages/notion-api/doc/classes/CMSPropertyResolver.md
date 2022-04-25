@@ -50,7 +50,7 @@ See [CMS.propertyResolver](CMS.md#propertyresolver).
 
 #### Defined in
 
-[lib/content-management-system.ts:958](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L958)
+[lib/content-management-system.ts:1010](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1010)
 
 ## Properties
 
@@ -60,7 +60,7 @@ See [CMS.propertyResolver](CMS.md#propertyresolver).
 
 #### Defined in
 
-[lib/content-management-system.ts:957](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L957)
+[lib/content-management-system.ts:1009](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1009)
 
 ## Methods
 
@@ -76,7 +76,7 @@ If `config.slug` is a property pointer, returns it as a [PropertyPointer](../int
 
 #### Defined in
 
-[lib/content-management-system.ts:963](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L963)
+[lib/content-management-system.ts:1015](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1015)
 
 ___
 
@@ -92,7 +92,7 @@ If `config.visible` is a property pointer, returns it as a [PropertyPointer](../
 
 #### Defined in
 
-[lib/content-management-system.ts:970](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L970)
+[lib/content-management-system.ts:1022](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1022)
 
 ___
 
@@ -118,4 +118,4 @@ ___
 
 #### Defined in
 
-[lib/content-management-system.ts:978](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L978)
+[lib/content-management-system.ts:1030](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1030)

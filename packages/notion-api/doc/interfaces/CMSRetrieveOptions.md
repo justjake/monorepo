@@ -28,4 +28,4 @@ If true, ignore the `visible` property of any retrieved [CMSPage](CMSPage.md)s b
 
 #### Defined in
 
-[lib/content-management-system.ts:366](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L366)
+[lib/content-management-system.ts:375](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L375)

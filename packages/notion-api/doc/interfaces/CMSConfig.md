@@ -171,6 +171,14 @@ Schema extends PartialDatabaseSchema> {
          * Notion, to `directory`?
          */
         downloadExternalAssets: boolean;
+        /**
+         * If specified, the CMS will attempt to copy emoji assets from this source
+         * directory into the `directory` specified above.
+         *
+         * If unset, falls back to data in the `emoji-datasource-apple` NPM package,
+         * if installed.
+         */
+        emojiSourceDirectory?: string;
     };
 }
 ```
@@ -328,6 +336,7 @@ which [expire after 1 hour](https://developers.notion.com/reference/file-object)
 | :------ | :------ | :------ |
 | `directory` | `string` | Filesystem path where the CMS should download assets. |
 | `downloadExternalAssets` | `boolean` | Should the CMS download external assets, eg images stored outside of Notion, to `directory`? |
+| `emojiSourceDirectory?` | `string` | If specified, the CMS will attempt to copy emoji assets from this source directory into the `directory` specified above.  If unset, falls back to data in the `emoji-datasource-apple` NPM package, if installed. |
 
 #### Defined in
 

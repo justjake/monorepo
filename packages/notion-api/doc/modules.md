@@ -1375,7 +1375,7 @@ export type CMSFrontmatter<CustomFrontmatter> = CMSDefaultFrontmatter & Omit<Cus
 
 #### Defined in
 
-[lib/content-management-system.ts:336](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L336)
+[lib/content-management-system.ts:345](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L345)
 
 ___
 
@@ -1397,7 +1397,7 @@ type MyPage = CMSPageOf<typeof MyCMS>;
 
 #### Defined in
 
-[lib/content-management-system.ts:356](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L356)
+[lib/content-management-system.ts:365](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L365)
 
 ___
 
@@ -1818,7 +1818,7 @@ The title of `page`, as [RichText](modules.md#richtext).
 
 #### Defined in
 
-[lib/content-management-system.ts:1000](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1000)
+[lib/content-management-system.ts:1052](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1052)
 
 ___
 
@@ -2549,7 +2549,7 @@ The default slug for the page, based on the page's ID.
 
 #### Defined in
 
-[lib/content-management-system.ts:990](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L990)
+[lib/content-management-system.ts:1042](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1042)
 
 ___
 
@@ -2571,7 +2571,7 @@ The title of `page`, as [RichText](modules.md#richtext).
 
 #### Defined in
 
-[lib/content-management-system.ts:1000](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1000)
+[lib/content-management-system.ts:1052](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1052)
 
 ___
 
@@ -2603,7 +2603,7 @@ Compute a custom property.
 
 #### Defined in
 
-[lib/content-management-system.ts:1039](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1039)
+[lib/content-management-system.ts:1091](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L1091)
 
 ___
 
@@ -2689,7 +2689,7 @@ Parse an AssetRequest from a NextJS-style query object.
 
 | Name | Type |
 | :------ | :------ |
-| `query` | [`AssetRequestNextJSQuery`](interfaces/AssetRequestNextJSQuery.md) |
+| `query` | [`AssetRequestNextJSQuery`](interfaces/AssetRequestNextJSQuery.md) \| `NextJSQuery` |
 
 #### Returns
 
@@ -2697,7 +2697,7 @@ Parse an AssetRequest from a NextJS-style query object.
 
 #### Defined in
 
-[lib/assets.ts:161](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L161)
+[lib/assets.ts:164](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L164)
 
 ___
 
@@ -2720,7 +2720,7 @@ Inverse of [getAssetRequestUrl](modules.md#getassetrequesturl).
 
 #### Defined in
 
-[lib/assets.ts:192](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L192)
+[lib/assets.ts:197](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L197)
 
 ___
 
@@ -2745,7 +2745,7 @@ Look up an asset from the Notion API.
 
 #### Defined in
 
-[lib/assets.ts:380](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L380)
+[lib/assets.ts:385](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L385)
 
 ___
 
@@ -2767,7 +2767,7 @@ a string key unique for the asset, suitable for use in a hashmap, cache, or file
 
 #### Defined in
 
-[lib/assets.ts:413](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L413)
+[lib/assets.ts:418](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L418)
 
 ___
 
@@ -2797,7 +2797,7 @@ Promise<string> Relative path from `directory` to image on disk.
 
 #### Defined in
 
-[lib/assets.ts:457](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L457)
+[lib/assets.ts:460](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L460)
 
 ___
 
@@ -2809,13 +2809,14 @@ Copy an emoji image for `emoji` into `directory`.
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `args` | `Object` |
-| `args.emoji` | `string` |
-| `args.directory` | `string` |
-| `args.filenamePrefix` | `string` |
-| `args.cacheBehavior?` | [`CacheBehavior`](modules.md#cachebehavior) |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `args` | `Object` | - |
+| `args.emoji` | `string` | - |
+| `args.directory` | `string` | - |
+| `args.filenamePrefix` | `string` | - |
+| `args.emojiSourceDirectory?` | `string` | Path to directory containing emoji images. The directory should have contents like this: https://github.com/iamcal/emoji-data/tree/1ddc9ca67c1379c372b4ca39824659f71caa2825/img-apple-160  If undefined, this path will be looked up using `require.resolve('emoji-datasource-apple')`, or fall back to `${process.cwd()}/node_modules/emoji-datasource-apple/img/apple/64`. |
+| `args.cacheBehavior?` | [`CacheBehavior`](modules.md#cachebehavior) | - |
 
 #### Returns
 
@@ -2825,7 +2826,7 @@ relative path from `directory` to the image.
 
 #### Defined in
 
-[lib/assets.ts:515](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L515)
+[lib/assets.ts:518](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L518)
 
 ___
 
@@ -2837,12 +2838,13 @@ Ensure `asset` is present on disk in `directory`.
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `args` | `Object` |
-| `args.asset` | [`Asset`](modules.md#asset) |
-| `args.directory` | `string` |
-| `args.cacheBehavior?` | [`CacheBehavior`](modules.md#cachebehavior) |
+| Name | Type | Description |
+| :------ | :------ | :------ |
+| `args` | `Object` | - |
+| `args.asset` | [`Asset`](modules.md#asset) | - |
+| `args.directory` | `string` | - |
+| `args.emojiSourceDirectory?` | `string` | See [ensureEmojiCopied](modules.md#ensureemojicopied) |
+| `args.cacheBehavior?` | [`CacheBehavior`](modules.md#cachebehavior) | - |
 
 #### Returns
 
@@ -2852,7 +2854,7 @@ Relative path from `directory` to the asset on disk, or undefined.
 
 #### Defined in
 
-[lib/assets.ts:556](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L556)
+[lib/assets.ts:582](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L582)
 
 ___
 
@@ -3484,7 +3486,7 @@ encountering a permission error, eg if the asset is expired.
 
 #### Defined in
 
-[lib/assets.ts:441](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L441)
+[lib/assets.ts:444](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L444)
 
 ___
 
@@ -3497,7 +3499,7 @@ encountering other HTTP error codes.
 
 #### Defined in
 
-[lib/assets.ts:447](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L447)
+[lib/assets.ts:450](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L450)
 
 ___
 

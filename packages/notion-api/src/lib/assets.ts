@@ -132,12 +132,15 @@ type _queryParamNotInAssetRequest = Assert<
   >
 >;
 
+interface NextJSQuery {
+  [key: string]: string | string[];
+}
+
 /**
  * @category Asset
  */
-export interface AssetRequestNextJSQuery {
+export interface AssetRequestNextJSQuery extends NextJSQuery {
   [ASSET_REQUEST_QUERY_PATH_PARAM]: [object: string, id: string, field: string];
-  [key: string]: string | string[];
 }
 
 /**
@@ -158,7 +161,9 @@ export interface ParsedAssetRequest {
  * Parse an AssetRequest from a NextJS-style query object.
  * @category Asset
  */
-export function parseAssetRequestQuery(query: AssetRequestNextJSQuery): ParsedAssetRequest {
+export function parseAssetRequestQuery(
+  query: AssetRequestNextJSQuery | NextJSQuery
+): ParsedAssetRequest {
   const assetRequestParts = query[ASSET_REQUEST_QUERY_PATH_PARAM];
   if (!query[ASSET_REQUEST_QUERY_PATH_PARAM]) {
     throw new Error(`Missing ${ASSET_REQUEST_QUERY_PATH_PARAM} query param`);

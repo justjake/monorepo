@@ -32,7 +32,7 @@ If true, ignore the `visible` property of any retrieved [CMSPage](CMSPage.md)s b
 
 #### Defined in
 
-[lib/content-management-system.ts:366](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L366)
+[lib/content-management-system.ts:375](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L375)
 
 ___
 
@@ -44,7 +44,7 @@ Apply these filters to all queries made inside the scope
 
 #### Defined in
 
-[lib/content-management-system.ts:384](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L384)
+[lib/content-management-system.ts:393](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L393)
 
 ___
 
@@ -56,4 +56,4 @@ Apply these sorts to all queries made inside the scope. These take precedence ov
 
 #### Defined in
 
-[lib/content-management-system.ts:386](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L386)
+[lib/content-management-system.ts:395](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L395)

@@ -2,9 +2,11 @@
 
 # Interface: AssetRequestNextJSQuery
 
-## Indexable
+## Hierarchy
 
-▪ [key: `string`]: `string` \| `string`[]
+- `NextJSQuery`
+
+  ↳ **`AssetRequestNextJSQuery`**
 
 ## Table of contents
 
@@ -20,4 +22,4 @@
 
 #### Defined in
 
-[lib/assets.ts:139](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L139)
+[lib/assets.ts:143](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L143)

@@ -9,6 +9,50 @@ optionally on disk.
 
 See [CMSConfig](../interfaces/CMSConfig.md) for configuration options.
 
+```typescript
+const cms = new CMS({
+  notion,
+  database_id: 'example',
+  slug: 'productCode',
+  visible: 'publicAccess',
+  schema: inferDatabaseSchema({
+    productCode: {
+      name: 'Product Code',
+      type: 'rich_text',
+    },
+    Subtitle: {
+      type: 'rich_text',
+    },
+    publicAccess: {
+      name: 'Public Access',
+      type: 'checkbox',
+    },
+    Date: {
+      type: 'date',
+    },
+  }),
+  getFrontmatter: ({ properties }) => ({
+    ...properties,
+    productCode: richTextAsPlainText(properties.productCode),
+  }),
+});
+
+const oldPagesIterator = cms.query({
+  filter: cms.filter.and(
+    cms.filter.Date.before('2020-01-01'),
+    cms.filter.publicAccess.equals(true)
+  ),
+  sorts: [cms.sort.last_edited_time.descending],
+});
+
+const drafts = cms.scope({
+  filter: cms.getVisibleEqualsFilter(false),
+  showInvisible: true,
+});
+
+const draftsIterator = drafts.query({})
+```
+
 ## Type parameters
 
 | Name | Type |
@@ -76,7 +120,7 @@ See [CMSConfig](../interfaces/CMSConfig.md) for configuration options.
 
 #### Defined in
 
-[lib/content-management-system.ts:501](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L501)
+[lib/content-management-system.ts:553](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L553)
 
 ## Properties
 
@@ -88,7 +132,7 @@ Indexes links between the pages that have been loaded into memory.
 
 #### Defined in
 
-[lib/content-management-system.ts:444](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L444)
+[lib/content-management-system.ts:496](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L496)
 
 ___
 
@@ -100,7 +144,7 @@ Indexes Notion API objects in pages that have been loaded into memory.
 
 #### Defined in
 
-[lib/content-management-system.ts:448](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L448)
+[lib/content-management-system.ts:500](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L500)
 
 ___
 
@@ -112,7 +156,7 @@ Maps from Page ID to CMSPage
 
 #### Defined in
 
-[lib/content-management-system.ts:450](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L450)
+[lib/content-management-system.ts:502](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L502)
 
 ___
 
@@ -124,7 +168,7 @@ Asset downloader, requires `assets` configuration
 
 #### Defined in
 
-[lib/content-management-system.ts:452](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L452)
+[lib/content-management-system.ts:504](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L504)
 
 ___
 
@@ -146,7 +190,7 @@ cms.query({
 
 #### Defined in
 
-[lib/content-management-system.ts:466](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L466)
+[lib/content-management-system.ts:518](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L518)
 
 ___
 
@@ -168,7 +212,7 @@ cms.query({
 
 #### Defined in
 
-[lib/content-management-system.ts:480](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L480)
+[lib/content-management-system.ts:532](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L532)
 
 ___
 
@@ -180,7 +224,7 @@ Resolves [CMSConfig.slug](../interfaces/CMSConfig.md#slug) and [CMSConfig.visibl
 
 #### Defined in
 
-[lib/content-management-system.ts:482](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L482)
+[lib/content-management-system.ts:534](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L534)
 
 ___
 
@@ -213,7 +257,7 @@ Query the database, returning all matching [CMSPage](../interfaces/CMSPage.md)s.
 
 #### Defined in
 
-[lib/content-management-system.ts:489](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L489)
+[lib/content-management-system.ts:541](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L541)
 
 ___
 
@@ -235,7 +279,7 @@ See also [CMSConfig.schema](../interfaces/CMSConfig.md#schema).
 
 #### Defined in
 
-[lib/content-management-system.ts:497](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L497)
+[lib/content-management-system.ts:549](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L549)
 
 ## Methods
 
@@ -258,7 +302,7 @@ Retrieve a CMS page by ID.
 
 #### Defined in
 
-[lib/content-management-system.ts:508](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L508)
+[lib/content-management-system.ts:560](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L560)
 
 ___
 
@@ -285,7 +329,7 @@ database.
 
 #### Defined in
 
-[lib/content-management-system.ts:550](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L550)
+[lib/content-management-system.ts:602](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L602)
 
 ___
 
@@ -311,7 +355,7 @@ Scan the requests of `queryParameters` for the first page with the given slug.
 
 #### Defined in
 
-[lib/content-management-system.ts:588](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L588)
+[lib/content-management-system.ts:640](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L640)
 
 ___
 
@@ -336,7 +380,7 @@ Scan the results of `queryParameters` and return each page as a [CMSPage](../int
 
 #### Defined in
 
-[lib/content-management-system.ts:631](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L631)
+[lib/content-management-system.ts:683](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L683)
 
 ___
 
@@ -362,7 +406,7 @@ the Notion API QueryDatabaseParameters used as the basis for queries made by thi
 
 #### Defined in
 
-[lib/content-management-system.ts:658](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L658)
+[lib/content-management-system.ts:710](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L710)
 
 ___
 
@@ -382,7 +426,7 @@ ___
 
 #### Defined in
 
-[lib/content-management-system.ts:669](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L669)
+[lib/content-management-system.ts:721](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L721)
 
 ___
 
@@ -408,7 +452,7 @@ A child scope within this scope.
 
 #### Defined in
 
-[lib/content-management-system.ts:719](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L719)
+[lib/content-management-system.ts:771](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L771)
 
 ___
 
@@ -435,7 +479,7 @@ This filter is added automatically to queries in the CMS and
 
 #### Defined in
 
-[lib/content-management-system.ts:785](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L785)
+[lib/content-management-system.ts:837](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L837)
 
 ___
 
@@ -458,7 +502,7 @@ This filter is used by [loadPageBySlug](CMS.md#loadpagebyslug) and possibly by [
 
 #### Defined in
 
-[lib/content-management-system.ts:813](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L813)
+[lib/content-management-system.ts:865](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L865)
 
 ___
 
@@ -472,4 +516,4 @@ ___
 
 #### Defined in
 
-[lib/content-management-system.ts:837](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L837)
+[lib/content-management-system.ts:889](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L889)

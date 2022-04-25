@@ -23,7 +23,7 @@ for freshness and cache busting.
 
 #### Defined in
 
-[lib/assets.ts:153](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L153)
+[lib/assets.ts:156](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L156)
 
 ___
 
@@ -33,4 +33,4 @@ ___
 
 #### Defined in
 
-[lib/assets.ts:154](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L154)
+[lib/assets.ts:157](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/assets.ts#L157)

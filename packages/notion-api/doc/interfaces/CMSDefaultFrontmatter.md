@@ -30,7 +30,7 @@ export interface CMSDefaultFrontmatter {
 
 #### Defined in
 
-[lib/content-management-system.ts:326](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L326)
+[lib/content-management-system.ts:335](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L335)
 
 ___
 
@@ -40,7 +40,7 @@ ___
 
 #### Defined in
 
-[lib/content-management-system.ts:327](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L327)
+[lib/content-management-system.ts:336](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L336)
 
 ___
 
@@ -50,4 +50,4 @@ ___
 
 #### Defined in
 
-[lib/content-management-system.ts:328](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L328)
+[lib/content-management-system.ts:337](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L337)

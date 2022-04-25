@@ -25,7 +25,7 @@ A CMSPage is a Notion page and its computed CMS frontmatter.
 
 #### Defined in
 
-[lib/content-management-system.ts:344](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L344)
+[lib/content-management-system.ts:353](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L353)
 
 ___
 
@@ -35,4 +35,4 @@ ___
 
 #### Defined in
 
-[lib/content-management-system.ts:345](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L345)
+[lib/content-management-system.ts:354](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L354)

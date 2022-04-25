@@ -51,7 +51,7 @@ Query the database, returning all matching [CMSPage](CMSPage.md)s.
 
 #### Defined in
 
-[lib/content-management-system.ts:404](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L404)
+[lib/content-management-system.ts:413](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L413)
 
 ___
 
@@ -73,7 +73,7 @@ A child scope within this scope.
 
 #### Defined in
 
-[lib/content-management-system.ts:415](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L415)
+[lib/content-management-system.ts:424](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L424)
 
 ___
 
@@ -95,4 +95,4 @@ the Notion API QueryDatabaseParameters used as the basis for queries made by thi
 
 #### Defined in
 
-[lib/content-management-system.ts:420](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L420)
+[lib/content-management-system.ts:429](https://github.com/justjake/monorepo/blob/main/packages/notion-api/src/lib/content-management-system.ts#L429)
