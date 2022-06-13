@@ -282,9 +282,9 @@ type BlockTypeMap = {
  */
 export type BlockDataMap = {
   [K in BlockType]: BlockTypeMap[K] extends { [key in K]: unknown }
-    ? // @ts-expect-error "Too complex" although, it works?
-      BlockTypeMap[K][K]
-    : never;
+  ?
+  (K extends keyof BlockTypeMap[K] ? BlockTypeMap[K][K] : never)
+  : never;
 };
 
 /**
@@ -613,9 +613,9 @@ type PropertyFilterTypeMap = {
  */
 export type PropertyFilterDataMap = {
   [K in PropertyType]: PropertyFilterTypeMap[K] extends { [key in K]: unknown }
-    ? // @ts-expect-error "Too complex" although, it works?
-      PropertyFilterTypeMap[K][K]
-    : never;
+  ?
+  (K extends keyof PropertyFilterTypeMap[K] ? PropertyFilterTypeMap[K][K]: never)
+  : never;
 };
 
 /**
@@ -816,9 +816,9 @@ type PropertyTypeMap = {
  */
 export type PropertyDataMap = {
   [K in PropertyType]: PropertyTypeMap[K] extends { [key in K]: unknown }
-    ? // @ts-expect-error "Too complex" although, it works?
-      PropertyTypeMap[K][K]
-    : never;
+  ?
+  (K extends keyof PropertyTypeMap[K] ? PropertyTypeMap[K][K] : never)
+  : never;
 };
 
 /**
@@ -908,9 +908,9 @@ export interface PropertyPointer<Type extends PropertyType = PropertyType> {
 export type PropertyPointerWithOutput<
   /** The output data type of the property */
   T
-> = {
-  [P in keyof PropertyDataMap]: PropertyDataMap[P] extends T | null ? PropertyPointer<P> : never;
-}[PropertyType];
+  > = {
+    [P in keyof PropertyDataMap]: PropertyDataMap[P] extends T | null ? PropertyPointer<P> : never;
+  }[PropertyType];
 
 /**
  * Get the property with `name` and/or `id` from `page`.
@@ -1049,9 +1049,9 @@ type PropertySchemaTypeMap = {
  */
 export type PropertySchemaDataMap = {
   [K in PropertyType]: PropertySchemaTypeMap[K] extends { [key in K]: unknown }
-    ? // @ts-expect-error "Too complex" although, it works?
-      PropertySchemaTypeMap[K][K]
-    : never;
+  ?
+  (K extends keyof PropertySchemaTypeMap[K] ? PropertySchemaTypeMap[K][K] : never)
+  : never;
 };
 
 /**
@@ -1096,14 +1096,14 @@ export type PartialDatabaseSchemaWithOnlyType = Record<
  */
 export type PartialDatabaseSchemaFromSchemaWithOnlyType<
   T extends PartialDatabaseSchemaWithOnlyType
-> = Assert<
-  PartialDatabaseSchema,
-  {
-    // TODO: does this work better as this?
-    // T[K] extends PartialPropertySchema<T[K]["type"]> ? T[K] : PartialPropertySchema<T[K]["type"]> & T[K]
-    [K in keyof T]: T[K] & PartialPropertySchema<T[K]['type']>;
-  }
->;
+  > = Assert<
+    PartialDatabaseSchema,
+    {
+      // TODO: does this work better as this?
+      // T[K] extends PartialPropertySchema<T[K]["type"]> ? T[K] : PartialPropertySchema<T[K]["type"]> & T[K]
+      [K in keyof T]: T[K] & PartialPropertySchema<T[K]['type']>;
+    }
+  >;
 
 /**
  * This function helps you infer a concrete subtype of [[PartialDatabaseSchema]]
@@ -1180,59 +1180,59 @@ type PropertyDiffPointer = Pick<PropertyPointer, 'name' | 'id'>;
 export type DatabaseSchemaDiff<
   Before extends PartialDatabaseSchema,
   After extends PartialDatabaseSchema
-> =
+  > =
   | {
-      /** Key in the database schema differs, but has same name/id. */
-      type: 'key';
-      property: PropertyDiffPointer;
-      before: keyof Before;
-      after: keyof After;
-    }
+    /** Key in the database schema differs, but has same name/id. */
+    type: 'key';
+    property: PropertyDiffPointer;
+    before: keyof Before;
+    after: keyof After;
+  }
   | {
-      /** A property previously didn't have an ID, but now does */
-      type: `property.id.${'added' | 'removed'}`;
-      property: { name: string };
-      id: string;
-    }
+    /** A property previously didn't have an ID, but now does */
+    type: `property.id.${'added' | 'removed'}`;
+    property: { name: string };
+    id: string;
+  }
   | {
-      /** Type of the property differs, but has same name/id. */
-      type: 'property.type';
-      property: PropertyDiffPointer;
-      before: PropertyType;
-      after: PropertyType;
-    }
+    /** Type of the property differs, but has same name/id. */
+    type: 'property.type';
+    property: PropertyDiffPointer;
+    before: PropertyType;
+    after: PropertyType;
+  }
   | {
-      /**
-       * Property name changed. This is only detectable if the property has a
-       * defined ID in both before and after.
-       */
-      type: 'property.name';
-      property: { id: string };
-      before: string;
-      after: string;
-    }
+    /**
+     * Property name changed. This is only detectable if the property has a
+     * defined ID in both before and after.
+     */
+    type: 'property.name';
+    property: { id: string };
+    before: string;
+    after: string;
+  }
   | {
-      /**
-       * Schema of a property's data changed, eg the options of a multi_select.
-       * This diff is only available if both `before` and `after` have a fully
-       * defined PropertySchema with data.
-       */
-      type: 'property.schema';
-      before: PropertySchema;
-      after: PropertySchema;
-    }
+    /**
+     * Schema of a property's data changed, eg the options of a multi_select.
+     * This diff is only available if both `before` and `after` have a fully
+     * defined PropertySchema with data.
+     */
+    type: 'property.schema';
+    before: PropertySchema;
+    after: PropertySchema;
+  }
   | {
-      /** Property in `before`, but `after` has no property with same name/id. */
-      type: 'removed';
-      property: Assert<PropertyDiffPointer, PartialPropertySchema>;
-      before: keyof Before;
-    }
+    /** Property in `before`, but `after` has no property with same name/id. */
+    type: 'removed';
+    property: Assert<PropertyDiffPointer, PartialPropertySchema>;
+    before: keyof Before;
+  }
   | {
-      /** Property in `after`, but `before` has no property with same name/id. */
-      type: 'added';
-      property: Assert<PropertyDiffPointer, PartialPropertySchema>;
-      after: keyof After;
-    };
+    /** Property in `after`, but `before` has no property with same name/id. */
+    type: 'added';
+    property: Assert<PropertyDiffPointer, PartialPropertySchema>;
+    after: keyof After;
+  };
 
 interface ResolvedDiffPointer<T extends PartialDatabaseSchema> {
   key: keyof T;
